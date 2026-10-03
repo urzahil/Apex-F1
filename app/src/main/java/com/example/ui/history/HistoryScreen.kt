@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,12 +20,13 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -34,6 +34,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,7 +42,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,7 +65,6 @@ import com.example.ui.theme.F1TextSecondary
 import com.example.ui.theme.F1TextTertiary
 import com.example.ui.theme.FlagYellow
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun HistoryScreen(
@@ -75,8 +75,6 @@ fun HistoryScreen(
     val sessionDetailState by viewModel.sessionDetailState.collectAsStateWithLifecycle()
 
     val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
-    var scrolledToBottomForYear by rememberSaveable { mutableStateOf<Int?>(null) }
-    val coroutineScope = rememberCoroutineScope()
 
     Box(
         modifier = modifier
@@ -88,27 +86,44 @@ fun HistoryScreen(
                 .fillMaxSize()
                 .background(CarbonBackground)
         ) {
-            // History Header without top refresh button
+            // Screen Header matching Live and Standings screens
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
                     Text(
-                        text = "HISTORICAL ARCHIVE",
+                        text = "${java.time.Year.now().value} FORMULA 1 SEASON",
                         color = F1Red,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp
                     )
                     Text(
-                        text = "F1 ARCHIVE (2018 - ${java.time.Year.now().value})",
+                        text = "RACES",
                         color = F1TextPrimary,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
+                    )
+                }
+                IconButton(
+                    onClick = { viewModel.refresh() },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(CarbonCard)
+                        .border(1.dp, CarbonDivider, CircleShape)
+                        .testTag("refresh_races_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh Races",
+                        tint = F1TextPrimary,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -131,7 +146,7 @@ fun HistoryScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "Error Loading History Archive",
+                                text = "Error Loading Races",
                                 color = F1TextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
@@ -153,48 +168,7 @@ fun HistoryScreen(
                     }
                 }
                 is HistoryUiState.Success -> {
-                    // Automatically scroll to bottom of the list when loading a year
-                    LaunchedEffect(state.selectedYear, state.meetings.size) {
-                        if (scrolledToBottomForYear != state.selectedYear && state.meetings.isNotEmpty()) {
-                            listState.scrollToItem(state.meetings.size - 1)
-                            scrolledToBottomForYear = state.selectedYear
-                        }
-                    }
-
-                    // Year Selector Chips
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        state.availableYears.forEach { year ->
-                            val isSelected = year == state.selectedYear
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(18.dp))
-                                    .background(if (isSelected) F1Red else CarbonCard)
-                                    .border(1.dp, if (isSelected) F1Red else CarbonDivider, RoundedCornerShape(18.dp))
-                                    .clickable {
-                                        scrolledToBottomForYear = null // Will scroll to bottom of new year
-                                        viewModel.selectYear(year)
-                                    }
-                                    .padding(horizontal = 14.dp, vertical = 6.dp)
-                                    .testTag("history_year_$year")
-                            ) {
-                                Text(
-                                    text = year.toString(),
-                                    color = if (isSelected) Color.White else F1TextPrimary,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-
-                    // Season Info Banner
+                    // Season Calendar Info Banner
                     Card(
                         shape = RoundedCornerShape(10.dp),
                         colors = CardDefaults.cardColors(containerColor = CarbonCard),
@@ -205,27 +179,28 @@ fun HistoryScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "SEASON ${state.selectedYear}: ${state.meetings.size} GRAND PRIX",
+                                text = "${state.selectedYear} SEASON CALENDAR",
                                 color = F1TextPrimary,
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp,
-                                modifier = Modifier.weight(1f)
+                                letterSpacing = 0.5.sp
                             )
                             Text(
-                                text = "FP1-FP3 • QUALI • RACE",
-                                color = ElectricCyan,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
+                                text = "${state.meetings.size} ROUNDS",
+                                color = F1TextSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
                             )
                         }
                     }
 
-                    // Historical Meetings List using saved listState
+                    // Meetings List
                     LazyColumn(
                         state = listState,
                         modifier = Modifier
@@ -313,12 +288,6 @@ private fun MeetingCard(
                                 fontSize = 12.sp
                             )
                         }
-                        Text(
-                            text = " • ${sessions.size} sessions",
-                            color = ElectricCyan,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
                     }
                 }
                 Icon(

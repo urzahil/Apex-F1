@@ -108,7 +108,7 @@ fun HistorySessionDetailScreen(
             Spacer(modifier = Modifier.width(4.dp))
             Column {
                 Text(
-                    text = "HISTORICAL SESSION CLASSIFICATION",
+                    text = "SESSION CLASSIFICATION",
                     color = F1Red,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
@@ -138,7 +138,7 @@ fun HistorySessionDetailScreen(
                         CircularProgressIndicator(color = F1Red)
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "DOWNLOADING ARCHIVE TELEMETRY...",
+                            text = "LOADING SESSION RESULTS...",
                             color = F1TextSecondary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -304,7 +304,7 @@ private fun HistoryClassificationList(
                 ) {
                     Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
                         Text(
-                            text = "No classification data recorded in the archive for this session.",
+                            text = "No classification data recorded for this session.",
                             color = F1TextSecondary,
                             fontSize = 13.sp
                         )

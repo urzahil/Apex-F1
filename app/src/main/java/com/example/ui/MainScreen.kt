@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.outlined.EmojiEvents
-import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -51,7 +51,7 @@ enum class NavDestination(
 ) {
     LIVE("Live", Icons.Filled.Speed, Icons.Outlined.Speed, "nav_live"),
     STANDINGS("Standings", Icons.Filled.EmojiEvents, Icons.Outlined.EmojiEvents, "nav_standings"),
-    HISTORY("History", Icons.Filled.History, Icons.Outlined.History, "nav_history")
+    RACES("Races", Icons.Filled.Flag, Icons.Outlined.Flag, "nav_races")
 }
 
 @Composable
@@ -106,7 +106,7 @@ fun MainScreen() {
             when (selectedTab) {
                 NavDestination.LIVE -> LiveScreen(viewModel = liveViewModel)
                 NavDestination.STANDINGS -> StandingsScreen(viewModel = standingsViewModel)
-                NavDestination.HISTORY -> HistoryScreen(viewModel = historyViewModel)
+                NavDestination.RACES -> HistoryScreen(viewModel = historyViewModel)
             }
         }
     }
