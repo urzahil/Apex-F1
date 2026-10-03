@@ -27,7 +27,8 @@ sealed interface LiveUiState {
     data class Error(val message: String) : LiveUiState
 }
 
-class LiveViewModel(application: Application) : AndroidViewModel(application) {\n    private val repository = F1Repository(context = application)
+class LiveViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = F1Repository(context = application)
     private val _uiState = MutableStateFlow<LiveUiState>(LiveUiState.Loading)
     val uiState: StateFlow<LiveUiState> = _uiState.asStateFlow()
 
