@@ -26,7 +26,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
+
+      - name: Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.3.1"
 
       - name: Configure API key
         shell: bash
@@ -34,14 +38,11 @@ jobs:
           test -n "$F1_API_KEY"
           printf 'F1_API_KEY=%s\n' "$F1_API_KEY" > .env
 
-      - name: Make Gradle executable
-        run: chmod +x ./gradlew
-
       - name: Unit tests
-        run: ./gradlew testDebugUnitTest --no-daemon
+        run: gradle testDebugUnitTest --no-daemon
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: gradle assembleDebug --no-daemon
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
