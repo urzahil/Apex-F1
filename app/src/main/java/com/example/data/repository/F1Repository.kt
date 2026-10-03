@@ -21,9 +21,9 @@ suspend inline fun <T> apiCall(crossinline block: suspend () -> T): Result<T> =
     catch (e: CancellationException) { throw e }
     catch (e: Exception) { Result.failure(e) }
 
-suspend inline fun <T> Result<T>.recoverApi(crossinline block: suspend () -> T): Result<T> {
+suspend inline fun <T> Result<T>.recoverApi(crossinline block: suspend (Throwable) -> T): Result<T> {
     if (isSuccess) return this
-    return try { Result.success(block()) }
+    return try { Result.success(block(exceptionOrNull() ?: IOException("Unknown API failure"))) }
     catch (e: CancellationException) { throw e }
     catch (_: Exception) { this }
 }
@@ -62,9 +62,9 @@ class F1Repository(
             val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
             if (!forceRefresh) cache?.read<List<CalendarRound>>("calendar", type, CALENDAR_TTL)?.let { return@apiCall it }
             api.getCalendar().also { cache?.write("calendar", it, type) }
-        }.recoverApi {
+        }.recoverApi { error ->
             val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
-            cache?.read<List<CalendarRound>>("calendar", type, Long.MAX_VALUE) ?: throw it
+            cache?.read<List<CalendarRound>>("calendar", type, Long.MAX_VALUE) ?: throw error
         }
     }
 
@@ -73,9 +73,9 @@ class F1Repository(
             val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
             cache?.read<List<DriverStanding>>("standings_drivers", type, STANDINGS_TTL)?.let { return@apiCall it }
             api.getDriverStandings().standings.orEmpty().also { cache?.write("standings_drivers", it, type) }
-        }.recoverApi {
+        }.recoverApi { error ->
             val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
-            cache?.read<List<DriverStanding>>("standings_drivers", type, Long.MAX_VALUE) ?: throw it
+            cache?.read<List<DriverStanding>>("standings_drivers", type, Long.MAX_VALUE) ?: throw error
         }
     }
 
@@ -84,9 +84,9 @@ class F1Repository(
             val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
             cache?.read<List<ConstructorStanding>>("standings_constructors", type, STANDINGS_TTL)?.let { return@apiCall it }
             api.getConstructorStandings().standings.orEmpty().also { cache?.write("standings_constructors", it, type) }
-        }.recoverApi {
+        }.recoverApi { error ->
             val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
-            cache?.read<List<ConstructorStanding>>("standings_constructors", type, Long.MAX_VALUE) ?: throw it
+            cache?.read<List<ConstructorStanding>>("standings_constructors", type, Long.MAX_VALUE) ?: throw error
         }
     }
 
@@ -95,9 +95,9 @@ class F1Repository(
             val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
             cache?.read<List<ResultFileItem>>("results", type, RESULTS_TTL)?.let { return@apiCall it }
             api.getResults().also { cache?.write("results", it, type) }
-        }.recoverApi {
+        }.recoverApi { error ->
             val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
-            cache?.read<List<ResultFileItem>>("results", type, Long.MAX_VALUE) ?: throw it
+            cache?.read<List<ResultFileItem>>("results", type, Long.MAX_VALUE) ?: throw error
         }
     }
 
@@ -110,9 +110,9 @@ class F1Repository(
             val key = "history_year_" + year
             cache?.read<List<HistoryMeeting>>(key, type, HISTORY_TTL)?.let { return@apiCall it }
             api.getHistoryYear(year).meetings.orEmpty().also { cache?.write(key, it, type) }
-        }.recoverApi {
+        }.recoverApi { error ->
             val type = Types.newParameterizedType(List::class.java, HistoryMeeting::class.java)
-            cache?.read<List<HistoryMeeting>>("history_year_" + year, type, Long.MAX_VALUE) ?: throw it
+            cache?.read<List<HistoryMeeting>>("history_year_" + year, type, Long.MAX_VALUE) ?: throw error
         }
     }
 
@@ -171,9 +171,9 @@ class F1Repository(
                     cache?.write(key, items, type)
                     items
                 }
-            }.recoverApi {
+            }.recoverApi { error ->
                 val type = Types.newParameterizedType(List::class.java, MergedHistoryClassification::class.java)
-                cache?.read<List<MergedHistoryClassification>>("history_session_" + path, type, Long.MAX_VALUE) ?: throw it
+                cache?.read<List<MergedHistoryClassification>>("history_session_" + path, type, Long.MAX_VALUE) ?: throw error
             }
         }
 
