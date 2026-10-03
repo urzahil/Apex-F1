@@ -294,9 +294,6 @@ private fun HistoryClassificationList(
                 }
             }
         } else {
-            val isRace = sessionName.contains("Race", ignoreCase = true)
-            val isPractice = sessionName.contains("Practice", ignoreCase = true) || sessionName.contains("FP", ignoreCase = true)
-
             // Filter and sort once per state change; the LazyColumn itself may recompose many times.
             val isRace = sessionName.contains("Race", ignoreCase = true)
             val isPractice = sessionName.contains("Practice", ignoreCase = true) || sessionName.contains("FP", ignoreCase = true)
