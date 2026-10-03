@@ -29,7 +29,12 @@ object ApiClient {
             .build()
     }
 
-    val moshi: Moshi by lazy { Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build() }
+    val moshi: Moshi by lazy {
+        Moshi.Builder()
+            .add(TopThreeLinesJsonAdapter.factory())
+            .addLast(KotlinJsonAdapterFactory())
+            .build()
+    }
 
     val apiService: F1ApiService by lazy {
         Retrofit.Builder().baseUrl(BASE_URL).client(okHttpClient)
