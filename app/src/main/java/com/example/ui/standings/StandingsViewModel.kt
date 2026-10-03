@@ -22,7 +22,8 @@ sealed interface StandingsUiState {
     data class Error(val message: String) : StandingsUiState
 }
 
-class StandingsViewModel(application: Application) : AndroidViewModel(application) {\n    private val repository = F1Repository(context = application)
+class StandingsViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = F1Repository(context = application)
     private val _uiState = MutableStateFlow<StandingsUiState>(StandingsUiState.Loading)
     val uiState: StateFlow<StandingsUiState> = _uiState.asStateFlow()
     private var currentCategory = StandingsCategory.DRIVERS
