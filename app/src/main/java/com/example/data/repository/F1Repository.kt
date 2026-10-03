@@ -73,7 +73,7 @@ class F1Repository(
             val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
             cache?.read<List<DriverStanding>>("standings_drivers", type, STANDINGS_TTL)?.let { return@apiCall it }
             api.getDriverStandings().standings.orEmpty().also { cache?.write("standings_drivers", it, type) }
-        }.recoverCatching {
+        }.recoverApi {
             val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
             cache?.read<List<DriverStanding>>("standings_drivers", type, Long.MAX_VALUE) ?: throw it
         }
@@ -84,7 +84,7 @@ class F1Repository(
             val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
             cache?.read<List<ConstructorStanding>>("standings_constructors", type, STANDINGS_TTL)?.let { return@apiCall it }
             api.getConstructorStandings().standings.orEmpty().also { cache?.write("standings_constructors", it, type) }
-        }.recoverCatching {
+        }.recoverApi {
             val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
             cache?.read<List<ConstructorStanding>>("standings_constructors", type, Long.MAX_VALUE) ?: throw it
         }
@@ -95,7 +95,7 @@ class F1Repository(
             val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
             cache?.read<List<ResultFileItem>>("results", type, RESULTS_TTL)?.let { return@apiCall it }
             api.getResults().also { cache?.write("results", it, type) }
-        }.recoverCatching {
+        }.recoverApi {
             val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
             cache?.read<List<ResultFileItem>>("results", type, Long.MAX_VALUE) ?: throw it
         }
@@ -110,7 +110,7 @@ class F1Repository(
             val key = "history_year_" + year
             cache?.read<List<HistoryMeeting>>(key, type, HISTORY_TTL)?.let { return@apiCall it }
             api.getHistoryYear(year).meetings.orEmpty().also { cache?.write(key, it, type) }
-        }.recoverCatching {
+        }.recoverApi {
             val type = Types.newParameterizedType(List::class.java, HistoryMeeting::class.java)
             cache?.read<List<HistoryMeeting>>("history_year_" + year, type, Long.MAX_VALUE) ?: throw it
         }
@@ -171,7 +171,7 @@ class F1Repository(
                     cache?.write(key, items, type)
                     items
                 }
-            }.recoverCatching {
+            }.recoverApi {
                 val type = Types.newParameterizedType(List::class.java, MergedHistoryClassification::class.java)
                 cache?.read<List<MergedHistoryClassification>>("history_session_" + path, type, Long.MAX_VALUE) ?: throw it
             }
