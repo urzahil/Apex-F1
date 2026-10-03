@@ -19,6 +19,30 @@ import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
+import com.squareup.moshi.Types
+
+ackage com.example.data.repository
+
+import com.example.data.api.ApiClient
+import com.example.data.api.F1ApiService
+import com.example.data.model.CalendarRound
+import com.example.data.model.ConstructorStanding
+import com.example.data.model.DetailedResultResponse
+import com.example.data.model.DriverStanding
+import com.example.data.model.HistoryMeeting
+import com.example.data.model.ResultFileItem
+import com.example.data.model.SnapshotResponse
+import com.example.data.model.StatusResponse
+import com.example.data.model.TimingResponse
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import java.time.Duration
+import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
+import com.squareup.moshi.Types
 
 data class MergedHistoryClassification(
     val position: String, val driverNumber: String, val fullName: String, val broadcastName: String, val tla: String,
@@ -29,9 +53,9 @@ data class MergedHistoryClassification(
     val numberOfLaps: Int?, val numberOfPitStops: Int?, val isRetired: Boolean, val inPit: Boolean, val stopped: Boolean
 )
 
-class F1Repository(private val api: F1ApiService = ApiClient.apiService) {
+class F1Repository(private val api: F1ApiService = ApiClient.apiService, context: Context? = null) {\n    private val historyDao = context?.let { ApexDatabase.get(it).historyClassificationDao() }
     private val historyClassificationCache = ConcurrentHashMap<String, List<MergedHistoryClassification>>()
-    private val historyYearsCache = AtomicReference<List<Int>?>(null)
+    private val historyYearsCache = AtomicReference<List<Int>?>(null)\n    private val classificationListType = Types.newParameterizedType(List::class.java, com.example.data.model.MergedHistoryClassification::class.java)\n    private val classificationAdapter = ApiClient.moshi.adapter<List<com.example.data.model.MergedHistoryClassification>>(classificationListType)
 
     suspend fun getStatus(): Result<StatusResponse> = withContext(Dispatchers.IO) { runCatching { api.getStatus() } }
     suspend fun getSessionDrivers(): Result<List<com.example.data.model.SessionDriver>> = withContext(Dispatchers.IO) { runCatching { api.getSessionDrivers() } }
@@ -55,7 +79,7 @@ class F1Repository(private val api: F1ApiService = ApiClient.apiService) {
     }
 
     suspend fun getHistorySessionClassification(path: String): Result<List<MergedHistoryClassification>> = withContext(Dispatchers.IO) {
-        historyClassificationCache[path]?.let { return@withContext Result.success(it) }
+        historyClassificationCache[path]?.let { return@withContext Result.success(it) }\n        historyDao?.get(path)?.let { entity ->\n            runCatching { classificationAdapter.fromJson(entity.payload) }.getOrNull()?.let { cached ->\n                historyClassificationCache[path] = cached\n                return@withContext Result.success(cached)\n            }\n        }
         runCatching {
             coroutineScope {
                 val timingDeferred = async { runCatching { api.getHistoryTimingData(path) }.getOrNull() }
