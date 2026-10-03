@@ -369,7 +369,7 @@ private fun LiveContentList(
                 }
             }
         } else {
-            items(state.leaderboard) { driver ->
+            items(state.leaderboard, key = { it.getDisplayNumber() }) { driver ->
                 DriverTimingRow(driver = driver)
             }
         }
