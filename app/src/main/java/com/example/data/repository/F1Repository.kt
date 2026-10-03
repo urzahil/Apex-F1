@@ -50,7 +50,7 @@ class F1Repository(
             api.getCalendar().also { cache?.write("calendar", it, type) }
         }.recoverCatching {
             val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
-            cache?.read<List<CalendarRound>>("calendar", type, Long.MAX_VALUE)?.getOrThrow() ?: throw it
+            cache?.read<List<CalendarRound>>("calendar", type, Long.MAX_VALUE) ?: throw it
         }
     }
 
