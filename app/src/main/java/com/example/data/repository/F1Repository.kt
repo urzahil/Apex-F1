@@ -64,7 +64,7 @@ class F1Repository(
     suspend fun getDriverStandings(): Result<List<DriverStanding>> = withContext(Dispatchers.IO) {
         apiCall {
             val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
-            cache?.read<List<DriverStanding>>("standings_drivers", type, STANDINGS_TTL)?.let { return@runCatching it }
+            cache?.read<List<DriverStanding>>("standings_drivers", type, STANDINGS_TTL)?.let { return@apiCall it }
             api.getDriverStandings().standings.orEmpty().also { cache?.write("standings_drivers", it, type) }
         }.recoverCatching {
             val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
@@ -75,7 +75,7 @@ class F1Repository(
     suspend fun getConstructorStandings(): Result<List<ConstructorStanding>> = withContext(Dispatchers.IO) {
         apiCall {
             val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
-            cache?.read<List<ConstructorStanding>>("standings_constructors", type, STANDINGS_TTL)?.let { return@runCatching it }
+            cache?.read<List<ConstructorStanding>>("standings_constructors", type, STANDINGS_TTL)?.let { return@apiCall it }
             api.getConstructorStandings().standings.orEmpty().also { cache?.write("standings_constructors", it, type) }
         }.recoverCatching {
             val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
@@ -86,7 +86,7 @@ class F1Repository(
     suspend fun getResults(): Result<List<ResultFileItem>> = withContext(Dispatchers.IO) {
         apiCall {
             val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
-            cache?.read<List<ResultFileItem>>("results", type, RESULTS_TTL)?.let { return@runCatching it }
+            cache?.read<List<ResultFileItem>>("results", type, RESULTS_TTL)?.let { return@apiCall it }
             api.getResults().also { cache?.write("results", it, type) }
         }.recoverCatching {
             val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
@@ -101,8 +101,11 @@ class F1Repository(
         apiCall {
             val type = Types.newParameterizedType(List::class.java, HistoryMeeting::class.java)
             val key = "history_year_" + year
-            cache?.read<List<HistoryMeeting>>(key, type, HISTORY_TTL)?.let { return@runCatching it }
+            cache?.read<List<HistoryMeeting>>(key, type, HISTORY_TTL)?.let { return@apiCall it }
             api.getHistoryYear(year).meetings.orEmpty().also { cache?.write(key, it, type) }
+        }.recoverCatching {
+            val type = Types.newParameterizedType(List::class.java, HistoryMeeting::class.java)
+            cache?.read<List<HistoryMeeting>>("history_year_" + year, type, Long.MAX_VALUE) ?: throw it
         }
     }
 
