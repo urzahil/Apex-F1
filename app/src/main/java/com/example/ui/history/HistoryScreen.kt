@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
@@ -209,7 +210,7 @@ fun HistoryScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(state.meetings, key = { it.name ?: it.location ?: "meeting" }) { meeting ->
+                        itemsIndexed(state.meetings, key = { index, meeting ->\n                            meeting.key ?: meeting.path ?: "${meeting.name}|${meeting.location}|${meeting.country}|$index"\n                        }) { _, meeting ->
                             MeetingCard(
                                 meeting = meeting,
                                 onSessionClick = { meetingName, session ->
