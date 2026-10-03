@@ -23,6 +23,8 @@ class ApiCache(private val dao: ApiCacheDao) {
 
     suspend fun <T> read(key: String, type: Type, maxAgeMs: Long): T? =
         withContext(Dispatchers.IO) {
+            purgeExpired()
+
             val entry = dao.get(key) ?: return@withContext null
             if (System.currentTimeMillis() - entry.updatedAtEpochMs > maxAgeMs) return@withContext null
             runCatching { moshi.adapter<T>(type).fromJson(entry.payload) }.getOrNull()
