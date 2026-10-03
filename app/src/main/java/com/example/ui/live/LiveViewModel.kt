@@ -40,7 +40,7 @@ class LiveViewModel(private val repository: F1Repository = F1Repository()) : Vie
     fun setScreenActive(active: Boolean) {
         if (isScreenActive == active) return
         isScreenActive = active
-        if (active && isAutoRefreshEnabled) startPolling() else pollingJob?.cancel()
+        if (active && isAutoRefreshEnabled) startPolling() else { pollingJob?.cancel(); refreshJob?.cancel() }
     }
 
     fun refresh() {
@@ -91,8 +91,9 @@ class LiveViewModel(private val repository: F1Repository = F1Repository()) : Vie
             roundName.isNotEmpty() && (roundName.contains(meetingName, true) || meetingName.contains(roundName, true))
         } ?: calendar?.firstOrNull()
 
-        val leaderboard = if (!timing?.drivers.isNullOrEmpty() && timing!!.drivers.any { it.position != null }) {
-            timing.drivers
+        val liveDrivers = timing?.drivers
+        val leaderboard = if (!liveDrivers.isNullOrEmpty() && liveDrivers.any { it.position != null }) {
+            liveDrivers
         } else {
             val sessionPath = status.session?.path
             val sessionClass = sessionPath?.takeIf { it.isNotBlank() }?.let { repository.getHistorySessionClassification(it).getOrNull() }
