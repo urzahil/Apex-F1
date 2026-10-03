@@ -4,6 +4,7 @@ import com.example.data.model.HistoryBestLap
 import com.example.data.model.HistoryDriverInfo
 import com.example.data.model.HistoryQualiStat
 import com.example.data.model.HistoryTimingLine
+import com.example.data.model.MergedHistoryClassification
 
 internal object HistoryClassificationMapper {
     fun map(lines: Map<String, HistoryTimingLine>, driverMap: Map<String, HistoryDriverInfo>, totalRaceTime: String?): List<MergedHistoryClassification> =
