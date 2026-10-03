@@ -6,6 +6,7 @@ import com.squareup.moshi.JsonReader
 import com.squareup.moshi.JsonWriter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
+import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 
 /**
@@ -56,7 +57,7 @@ class TopThreeLinesJsonAdapter private constructor(
         fun factory(): JsonAdapter.Factory = object : JsonAdapter.Factory {
             override fun create(type: Type, annotations: Set<Annotation>, moshi: Moshi): JsonAdapter<*>? {
                 if (annotations.isNotEmpty() || Types.getRawType(type) != List::class.java) return null
-                val arguments = Types.getParameterUpperBounds(type)
+                val arguments = (type as? ParameterizedType)?.actualTypeArguments ?: return null
                 if (arguments.size != 1 || arguments[0] != TopThreeDriver::class.java) return null
                 return TopThreeLinesJsonAdapter(
                     moshi.nextAdapter(this, arguments[0], emptySet())
