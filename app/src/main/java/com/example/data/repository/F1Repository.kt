@@ -1,18 +1,12 @@
 package com.example.data.repository
 
+import com.example.ApexApplication
 import com.example.data.api.ApiClient
 import com.example.data.api.F1ApiService
-import com.example.data.model.CalendarRound
-import com.example.data.model.ConstructorStanding
-import com.example.data.model.DetailedResultResponse
-import com.example.data.model.DriverStanding
-import com.example.data.model.HistoryDriverInfo
-import com.example.data.model.HistoryMeeting
-import com.example.data.model.HistoryTimingLine
-import com.example.data.model.ResultFileItem
-import com.example.data.model.SnapshotResponse
-import com.example.data.model.StatusResponse
-import com.example.data.model.TimingResponse
+import com.example.data.cache.ApiCache
+import com.example.data.cache.ApexDatabase
+import com.example.data.model.*
+import com.squareup.moshi.Types
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -21,188 +15,141 @@ import java.time.Duration
 import java.time.Instant
 
 data class MergedHistoryClassification(
-    val position: String,
-    val driverNumber: String,
-    val fullName: String,
-    val broadcastName: String,
-    val tla: String,
-    val teamName: String,
-    val teamColour: String,
-    val headshotUrl: String?,
-    val countryCode: String?,
-    val gapToLeader: String?,
-    val intervalToAhead: String?,
-    val timeDiffToFastest: String?,
-    val bestLapTime: String?,
-    val totalRaceTime: String?,
-    val q1Time: String?,
-    val q2Time: String?,
-    val q3Time: String?,
-    val q1Diff: String?,
-    val q2Diff: String?,
-    val q3Diff: String?,
-    val knockedOut: Boolean?,
-    val numberOfLaps: Int?,
-    val numberOfPitStops: Int?,
-    val isRetired: Boolean,
-    val inPit: Boolean,
-    val stopped: Boolean
+    val position: String, val driverNumber: String, val fullName: String, val broadcastName: String,
+    val tla: String, val teamName: String, val teamColour: String, val headshotUrl: String?,
+    val countryCode: String?, val gapToLeader: String?, val intervalToAhead: String?,
+    val timeDiffToFastest: String?, val bestLapTime: String?, val totalRaceTime: String?,
+    val q1Time: String?, val q2Time: String?, val q3Time: String?, val q1Diff: String?,
+    val q2Diff: String?, val q3Diff: String?, val knockedOut: Boolean?, val numberOfLaps: Int?,
+    val numberOfPitStops: Int?, val isRetired: Boolean, val inPit: Boolean, val stopped: Boolean
 )
 
 class F1Repository(
-    private val api: F1ApiService = ApiClient.apiService
+    private val api: F1ApiService = ApiClient.apiService,
+    private val cache: ApiCache? = defaultCache()
 ) {
-
-    suspend fun getStatus(): Result<StatusResponse> = withContext(Dispatchers.IO) {
-        runCatching { api.getStatus() }
+    private companion object {
+        const val CALENDAR_TTL = 6 * 60 * 60 * 1000L
+        const val HISTORY_TTL = 7 * 24 * 60 * 60 * 1000L
+        const val STANDINGS_TTL = 5 * 60 * 1000L
+        const val RESULTS_TTL = 24 * 60 * 60 * 1000L
+        fun defaultCache(): ApiCache? = runCatching {
+            ApiCache(ApexDatabase.getInstance(ApexApplication.instance).apiCacheDao())
+        }.getOrNull()
     }
 
-    suspend fun getSessionDrivers(): Result<List<com.example.data.model.SessionDriver>> = withContext(Dispatchers.IO) {
-        runCatching { api.getSessionDrivers() }
-    }
+    suspend fun getStatus(): Result<StatusResponse> = withContext(Dispatchers.IO) { runCatching { api.getStatus() } }
+    suspend fun getSessionDrivers(): Result<List<SessionDriver>> = withContext(Dispatchers.IO) { runCatching { api.getSessionDrivers() } }
+    suspend fun getSnapshot(): Result<SnapshotResponse> = withContext(Dispatchers.IO) { runCatching { api.getSnapshot() } }
+    suspend fun getTiming(): Result<TimingResponse> = withContext(Dispatchers.IO) { runCatching { api.getTiming() } }
 
-    suspend fun getSnapshot(): Result<SnapshotResponse> = withContext(Dispatchers.IO) {
-        runCatching { api.getSnapshot() }
-    }
-
-    suspend fun getTiming(): Result<TimingResponse> = withContext(Dispatchers.IO) {
-        runCatching { api.getTiming() }
-    }
-
-    suspend fun getCalendar(): Result<List<CalendarRound>> = withContext(Dispatchers.IO) {
-        runCatching { api.getCalendar() }
+    suspend fun getCalendar(forceRefresh: Boolean = false): Result<List<CalendarRound>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
+            if (!forceRefresh) cache?.read<List<CalendarRound>>("calendar", type, CALENDAR_TTL)?.let { return@runCatching it }
+            api.getCalendar().also { cache?.write("calendar", it, type) }
+        }.recoverCatching {
+            val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
+            cache?.read<List<CalendarRound>>("calendar", type, Long.MAX_VALUE) ?: throw it
+        }
     }
 
     suspend fun getDriverStandings(): Result<List<DriverStanding>> = withContext(Dispatchers.IO) {
         runCatching {
-            val res = api.getDriverStandings()
-            res.standings ?: emptyList()
+            val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
+            cache?.read<List<DriverStanding>>("standings_drivers", type, STANDINGS_TTL)?.let { return@runCatching it }
+            api.getDriverStandings().standings.orEmpty().also { cache?.write("standings_drivers", it, type) }
         }
     }
 
     suspend fun getConstructorStandings(): Result<List<ConstructorStanding>> = withContext(Dispatchers.IO) {
         runCatching {
-            val res = api.getConstructorStandings()
-            res.standings ?: emptyList()
+            val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
+            cache?.read<List<ConstructorStanding>>("standings_constructors", type, STANDINGS_TTL)?.let { return@runCatching it }
+            api.getConstructorStandings().standings.orEmpty().also { cache?.write("standings_constructors", it, type) }
         }
     }
 
     suspend fun getResults(): Result<List<ResultFileItem>> = withContext(Dispatchers.IO) {
-        runCatching { api.getResults() }
-    }
-
-    suspend fun getResultDetail(filename: String): Result<DetailedResultResponse> = withContext(Dispatchers.IO) {
-        runCatching { api.getResultDetail(filename) }
-    }
-
-    suspend fun getHistoryMeetings(year: Int): Result<List<HistoryMeeting>> = withContext(Dispatchers.IO) {
         runCatching {
-            val response = api.getHistoryYear(year)
-            response.meetings ?: emptyList()
+            val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
+            cache?.read<List<ResultFileItem>>("results", type, RESULTS_TTL)?.let { return@runCatching it }
+            api.getResults().also { cache?.write("results", it, type) }
         }
     }
 
-    suspend fun getHistorySessionClassification(path: String): Result<List<MergedHistoryClassification>> =
+    suspend fun getResultDetail(filename: String): Result<DetailedResultResponse> =
+        withContext(Dispatchers.IO) { runCatching { api.getResultDetail(filename) } }
+
+    suspend fun getHistoryMeetings(year: Int): Result<List<HistoryMeeting>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val type = Types.newParameterizedType(List::class.java, HistoryMeeting::class.java)
+            val key = "history_year_" + year
+            cache?.read<List<HistoryMeeting>>(key, type, HISTORY_TTL)?.let { return@runCatching it }
+            api.getHistoryYear(year).meetings.orEmpty().also { cache?.write(key, it, type) }
+        }
+    }
+
+    suspend fun getHistorySessionClassification(path: String, sessionType: String? = null): Result<List<MergedHistoryClassification>> =
         withContext(Dispatchers.IO) {
             runCatching {
+                val key = "history_session_" + path.hashCode()
+                val type = Types.newParameterizedType(List::class.java, MergedHistoryClassification::class.java)
+                cache?.read<List<MergedHistoryClassification>>(key, type, HISTORY_TTL)?.let { return@runCatching it }
+
                 coroutineScope {
-                    val timingDeferred = async { runCatching { api.getHistoryTimingData(path) }.getOrNull() }
-                    val driversDeferred = async { runCatching { api.getHistoryDriverList(path) }.getOrNull() }
-                    val sessionDataDeferred = async {
-                        if (path.contains("Race", ignoreCase = true)) {
+                    val timing = async { runCatching { api.getHistoryTimingData(path) }.getOrNull() }
+                    val drivers = async { runCatching { api.getHistoryDriverList(path) }.getOrNull() }
+                    val sessionData = async {
+                        if (sessionType?.contains("Race", ignoreCase = true) == true) {
                             runCatching { api.getHistorySessionData(path) }.getOrNull()
                         } else null
                     }
+                    val timingData = timing.await()
+                    val driverMap = drivers.await().orEmpty()
+                    val sd = sessionData.await()
 
-                    val timingData = timingDeferred.await()
-                    val driverMap = driversDeferred.await() ?: emptyMap()
-                    val sessionData = sessionDataDeferred.await()
-
-                    // Compute total race time for winner if available
-                    var totalRaceTime: String? = null
-                    if (sessionData != null) {
-                        val startUtc = sessionData.statusSeries?.find {
-                            it.sessionStatus.equals("Started", ignoreCase = true)
-                        }?.utc ?: sessionData.series?.firstOrNull()?.utc
-                        val finishUtc = sessionData.series?.lastOrNull()?.utc
-                        if (startUtc != null && finishUtc != null) {
-                            totalRaceTime = calculateDuration(startUtc, finishUtc)
-                        }
+                    val totalRaceTime = sd?.let {
+                        val start = it.statusSeries?.firstOrNull { s -> s.sessionStatus.equals("Started", true) }?.utc
+                            ?: it.series?.firstOrNull()?.utc
+                        val finish = it.statusSeries?.firstOrNull { s -> s.sessionStatus.equals("Finished", true) }?.utc
+                            ?: it.series?.lastOrNull()?.utc
+                        if (start != null && finish != null) calculateDuration(start, finish) else null
                     }
 
-                    val lines = timingData?.lines ?: emptyMap()
-                    val items = mutableListOf<MergedHistoryClassification>()
-
-                    for ((driverNumber, line) in lines) {
-                        val driverInfo = driverMap[driverNumber]
-                        val posStr = line.position?.toString() ?: "-"
-                        val isP1 = posStr == "1"
-
-                        // Extract Q1, Q2, Q3 lap times
-                        val q1 = line.bestLapTimes?.getOrNull(0)?.value?.takeIf { it.isNotBlank() }
-                        val q2 = line.bestLapTimes?.getOrNull(1)?.value?.takeIf { it.isNotBlank() }
-                        val q3 = line.bestLapTimes?.getOrNull(2)?.value?.takeIf { it.isNotBlank() }
-
-                        // Extract Q1, Q2, Q3 gaps to leader
-                        val q1Diff = line.stats?.getOrNull(0)?.timeDiffToFastest?.takeIf { it.isNotBlank() }
-                        val q2Diff = line.stats?.getOrNull(1)?.timeDiffToFastest?.takeIf { it.isNotBlank() }
-                        val q3Diff = line.stats?.getOrNull(2)?.timeDiffToFastest?.takeIf { it.isNotBlank() }
-
-                        items.add(
-                            MergedHistoryClassification(
-                                position = posStr,
-                                driverNumber = driverNumber,
-                                fullName = driverInfo?.fullName ?: driverInfo?.broadcastName ?: "Driver #$driverNumber",
-                                broadcastName = driverInfo?.broadcastName ?: "",
-                                tla = driverInfo?.tla ?: "",
-                                teamName = driverInfo?.teamName ?: "",
-                                teamColour = driverInfo?.teamColour ?: "E10600",
-                                headshotUrl = driverInfo?.headshotUrl,
-                                countryCode = driverInfo?.countryCode,
-                                gapToLeader = line.gapToLeader,
-                                intervalToAhead = line.intervalToPositionAhead?.value,
-                                timeDiffToFastest = line.timeDiffToFastest,
-                                bestLapTime = line.bestLapTime?.value,
-                                totalRaceTime = if (isP1) totalRaceTime else null,
-                                q1Time = q1,
-                                q2Time = q2,
-                                q3Time = q3,
-                                q1Diff = q1Diff,
-                                q2Diff = q2Diff,
-                                q3Diff = q3Diff,
-                                knockedOut = line.knockedOut,
-                                numberOfLaps = line.numberOfLaps,
-                                numberOfPitStops = line.numberOfPitStops,
-                                isRetired = line.retired == true,
-                                inPit = line.inPit == true,
-                                stopped = line.stopped == true
-                            )
+                    val items = timingData?.lines.orEmpty().map { (driverNumber, line) ->
+                        val info = driverMap[driverNumber]
+                        val pos = line.position?.toString() ?: "-"
+                        MergedHistoryClassification(
+                            position = pos, driverNumber = driverNumber,
+                            fullName = info?.fullName ?: info?.broadcastName ?: "Driver #$driverNumber",
+                            broadcastName = info?.broadcastName.orEmpty(), tla = info?.tla.orEmpty(),
+                            teamName = info?.teamName.orEmpty(), teamColour = info?.teamColour ?: "E10600",
+                            headshotUrl = info?.headshotUrl, countryCode = info?.countryCode,
+                            gapToLeader = line.gapToLeader, intervalToAhead = line.intervalToPositionAhead?.value,
+                            timeDiffToFastest = line.timeDiffToFastest, bestLapTime = line.bestLapTime?.value,
+                            totalRaceTime = if (pos == "1") totalRaceTime else null,
+                            q1Time = line.bestLapTimes?.getOrNull(0)?.value,
+                            q2Time = line.bestLapTimes?.getOrNull(1)?.value,
+                            q3Time = line.bestLapTimes?.getOrNull(2)?.value,
+                            q1Diff = line.stats?.getOrNull(0)?.timeDiffToFastest,
+                            q2Diff = line.stats?.getOrNull(1)?.timeDiffToFastest,
+                            q3Diff = line.stats?.getOrNull(2)?.timeDiffToFastest,
+                            knockedOut = line.knockedOut, numberOfLaps = line.numberOfLaps,
+                            numberOfPitStops = line.numberOfPitStops, isRetired = line.retired == true,
+                            inPit = line.inPit == true, stopped = line.stopped == true
                         )
-                    }
-
-                    items.sortedBy { item ->
-                        item.position.toIntOrNull() ?: 999
-                    }
+                    }.sortedBy { it.position.toIntOrNull() ?: 999 }
+                    cache?.write(key, items, type)
+                    items
                 }
             }
         }
 
-    private fun calculateDuration(startUtc: String, endUtc: String): String? {
-        return try {
-            val start = Instant.parse(startUtc)
-            val end = Instant.parse(endUtc)
-            val diff = Duration.between(start, end)
-            val hours = diff.toHours()
-            val minutes = diff.toMinutesPart()
-            val seconds = diff.toSecondsPart()
-            val millis = diff.toMillisPart()
-            if (hours > 0) {
-                String.format("%d:%02d:%02d.%03d", hours, minutes, seconds, millis)
-            } else {
-                String.format("%02d:%02d.%03d", minutes, seconds, millis)
-            }
-        } catch (_: Exception) {
-            null
-        }
-    }
+    private fun calculateDuration(startUtc: String, endUtc: String): String? = runCatching {
+        val diff = Duration.between(Instant.parse(startUtc), Instant.parse(endUtc))
+        val h = diff.toHours(); val m = diff.toMinutesPart(); val s = diff.toSecondsPart(); val ms = diff.toMillisPart()
+        if (h > 0) String.format("%d:%02d:%02d.%03d", h, m, s, ms)
+        else String.format("%02d:%02d.%03d", m, s, ms)
+    }.getOrNull()
 }
