@@ -311,7 +311,25 @@ private fun HistoryClassificationList(
                     }
                 }
             }
-        } else {\n            items(displayItems, key = { "${it.first.driverNumber}:${selectedQualiTab.name}" }) { (item, sessionTime) ->\n                val displayRank = when (selectedQualiTab) {\n                    QualiSessionTab.GRID -> item.position\n                    else -> displayRankByDriver[item.driverNumber] ?: "99"\n                }\n\n                HistoryDriverRow(\n                    item = item,\n                    displayRank = displayRank,\n                    specificTime = sessionTime,\n                    isQualifying = isQualifying,\n                    isRace = isRace,\n                    isPractice = isPractice,\n                    currentQualiTab = selectedQualiTab,\n                    totalInTab = displayItems.size\n                )\n            }\n        }
+        } else {
+            items(displayItems, key = { "${it.first.driverNumber}:${selectedQualiTab.name}" }) { (item, sessionTime) ->
+                val displayRank = when (selectedQualiTab) {
+                    QualiSessionTab.GRID -> item.position
+                    else -> displayRankByDriver[item.driverNumber] ?: "99"
+                }
+
+                HistoryDriverRow(
+                    item = item,
+                    displayRank = displayRank,
+                    specificTime = sessionTime,
+                    isQualifying = isQualifying,
+                    isRace = isRace,
+                    isPractice = isPractice,
+                    currentQualiTab = selectedQualiTab,
+                    totalInTab = displayItems.size
+                )
+            }
+        }
 
         item {
             Spacer(modifier = Modifier.height(24.dp))
