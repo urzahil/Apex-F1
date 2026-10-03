@@ -51,9 +51,9 @@ class F1Repository(
     suspend fun getTiming(): Result<TimingResponse> = withContext(Dispatchers.IO) { apiCall { api.getTiming() } }
 
     suspend fun getCalendar(forceRefresh: Boolean = false): Result<List<CalendarRound>> = withContext(Dispatchers.IO) {
-        runCatching {
+        apiCall {
             val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
-            if (!forceRefresh) cache?.read<List<CalendarRound>>("calendar", type, CALENDAR_TTL)?.let { return@runCatching it }
+            if (!forceRefresh) cache?.read<List<CalendarRound>>("calendar", type, CALENDAR_TTL)?.let { return@apiCall it }
             api.getCalendar().also { cache?.write("calendar", it, type) }
         }.recoverCatching {
             val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
@@ -62,26 +62,35 @@ class F1Repository(
     }
 
     suspend fun getDriverStandings(): Result<List<DriverStanding>> = withContext(Dispatchers.IO) {
-        runCatching {
+        apiCall {
             val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
             cache?.read<List<DriverStanding>>("standings_drivers", type, STANDINGS_TTL)?.let { return@runCatching it }
             api.getDriverStandings().standings.orEmpty().also { cache?.write("standings_drivers", it, type) }
+        }.recoverCatching {
+            val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
+            cache?.read<List<DriverStanding>>("standings_drivers", type, Long.MAX_VALUE) ?: throw it
         }
     }
 
     suspend fun getConstructorStandings(): Result<List<ConstructorStanding>> = withContext(Dispatchers.IO) {
-        runCatching {
+        apiCall {
             val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
             cache?.read<List<ConstructorStanding>>("standings_constructors", type, STANDINGS_TTL)?.let { return@runCatching it }
             api.getConstructorStandings().standings.orEmpty().also { cache?.write("standings_constructors", it, type) }
+        }.recoverCatching {
+            val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
+            cache?.read<List<ConstructorStanding>>("standings_constructors", type, Long.MAX_VALUE) ?: throw it
         }
     }
 
     suspend fun getResults(): Result<List<ResultFileItem>> = withContext(Dispatchers.IO) {
-        runCatching {
+        apiCall {
             val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
             cache?.read<List<ResultFileItem>>("results", type, RESULTS_TTL)?.let { return@runCatching it }
             api.getResults().also { cache?.write("results", it, type) }
+        }.recoverCatching {
+            val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
+            cache?.read<List<ResultFileItem>>("results", type, Long.MAX_VALUE) ?: throw it
         }
     }
 
@@ -89,7 +98,7 @@ class F1Repository(
         withContext(Dispatchers.IO) { apiCall { api.getResultDetail(filename) } }
 
     suspend fun getHistoryMeetings(year: Int): Result<List<HistoryMeeting>> = withContext(Dispatchers.IO) {
-        runCatching {
+        apiCall {
             val type = Types.newParameterizedType(List::class.java, HistoryMeeting::class.java)
             val key = "history_year_" + year
             cache?.read<List<HistoryMeeting>>(key, type, HISTORY_TTL)?.let { return@runCatching it }
@@ -102,7 +111,7 @@ class F1Repository(
             apiCall {
                 val key = "history_session_" + path
                 val type = Types.newParameterizedType(List::class.java, MergedHistoryClassification::class.java)
-                cache?.read<List<MergedHistoryClassification>>(key, type, HISTORY_TTL)?.let { return@runCatching it }
+                cache?.read<List<MergedHistoryClassification>>(key, type, HISTORY_TTL)?.let { return@apiCall it }
 
                 coroutineScope {
                     val timing = async { apiCall { api.getHistoryTimingData(path) } }
@@ -152,6 +161,9 @@ class F1Repository(
                     cache?.write(key, items, type)
                     items
                 }
+            }.recoverCatching {
+                val type = Types.newParameterizedType(List::class.java, MergedHistoryClassification::class.java)
+                cache?.read<List<MergedHistoryClassification>>("history_session_" + path, type, Long.MAX_VALUE) ?: throw it
             }
         }
 
