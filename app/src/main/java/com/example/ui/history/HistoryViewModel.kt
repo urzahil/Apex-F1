@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.model.HistoryMeeting
 import com.example.data.model.HistorySession
 import com.example.data.repository.F1Repository
-import com.example.data.repository.MergedHistoryClassification
+import com.example.data.model.MergedHistoryClassification
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
