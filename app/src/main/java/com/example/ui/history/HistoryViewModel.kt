@@ -25,7 +25,8 @@ sealed interface HistorySessionDetailUiState {
     data class Error(val message: String) : HistorySessionDetailUiState
 }
 
-class HistoryViewModel(application: Application) : AndroidViewModel(application) {\n    private val repository = F1Repository(context = application)
+class HistoryViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = F1Repository(context = application)
     private val _uiState = MutableStateFlow<HistoryUiState>(HistoryUiState.Loading)
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
     private val _sessionDetailState = MutableStateFlow<HistorySessionDetailUiState>(HistorySessionDetailUiState.Idle)
