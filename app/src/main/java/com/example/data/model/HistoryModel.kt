@@ -48,7 +48,7 @@ data class HistoryTimingLine(
     @Json(name = "GapToLeader") val gapToLeader: String? = null,
     @Json(name = "IntervalToPositionAhead") val intervalToPositionAhead: HistoryInterval? = null,
     @Json(name = "TimeDiffToFastest") val timeDiffToFastest: String? = null,
-    @Json(name = "Stats") val stats: List<HistoryQualiStat>? = null,
+    @Json(name = "Stats") val stats: Map<String, HistoryQualiStat>? = null,
     @Json(name = "NumberOfLaps") val numberOfLaps: Int? = null,
     @Json(name = "NumberOfPitStops") val numberOfPitStops: Int? = null,
     @Json(name = "Retired") val retired: Boolean? = null,
@@ -56,7 +56,7 @@ data class HistoryTimingLine(
     @Json(name = "Stopped") val stopped: Boolean? = null,
     @Json(name = "BestLapTime") val bestLapTime: HistoryBestLap? = null,
     @Json(name = "LastLapTime") val lastLapTime: HistoryBestLap? = null,
-    @Json(name = "BestLapTimes") val bestLapTimes: List<HistoryBestLap>? = null,
+    @Json(name = "BestLapTimes") val bestLapTimes: Map<String, HistoryBestLap>? = null,
     @Json(name = "KnockedOut") val knockedOut: Boolean? = null
 ) {
     fun displayPosition(): String = position?.toString() ?: "-"
@@ -75,10 +75,7 @@ data class HistorySessionDataResponse(
 )
 
 @JsonClass(generateAdapter = true)
-data class HistoryLapSeriesItem(
-    @Json(name = "Utc") val utc: String? = null,
-    @Json(name = "Lap") val lap: Int? = null
-)
+data class HistoryLapSeriesItem(@Json(name = "Utc") val utc: String? = null, @Json(name = "Lap") val lap: Int? = null)
 
 @JsonClass(generateAdapter = true)
 data class HistoryStatusSeriesItem(
