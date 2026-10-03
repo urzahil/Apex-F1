@@ -25,6 +25,8 @@ object ApiClient {
         val request = chain.request().newBuilder()
             .addHeader("x-api-key", key)
             .addHeader("Accept", "application/json")
+            .addHeader("Cache-Control", "no-cache, no-store")
+            .addHeader("Pragma", "no-cache")
             .build()
         chain.proceed(request)
     }
@@ -45,6 +47,9 @@ object ApiClient {
 
     val moshi: Moshi by lazy {
         Moshi.Builder()
+            .add(TopThreeDataFactory())
+            .add(TimingResponseFactory())
+            .add(SnapshotTimingDataFactory())
             .addLast(KotlinJsonAdapterFactory())
             .build()
     }

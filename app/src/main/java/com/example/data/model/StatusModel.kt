@@ -67,8 +67,8 @@ data class TrackStatusInfo(
     @Json(name = "Message") val message: String? = null
 )
 
-@JsonClass(generateAdapter = true)
 data class TopThreeData(
+    @Json(name = "SessionPart") val sessionPart: Int? = null,
     @Json(name = "Withheld") val withheld: Boolean? = null,
     @Json(name = "Lines") val lines: List<TopThreeDriver>? = null
 )

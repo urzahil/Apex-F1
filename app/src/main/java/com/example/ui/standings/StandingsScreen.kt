@@ -262,15 +262,6 @@ private fun DriverStandingCard(driver: DriverStanding, maxPoints: Double) {
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (!driver.acronym.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "(${driver.acronym})",
-                                color = F1TextSecondary,
-                                fontSize = 11.sp,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
                     }
 
                     Row(

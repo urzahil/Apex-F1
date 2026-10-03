@@ -1,6 +1,5 @@
 package com.example.ui.live
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,11 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Speed
@@ -35,7 +30,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -59,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.RaceControlMessage
 import com.example.data.model.TimingDriverLine
-import com.example.data.model.TopThreeDriver
 import com.example.ui.components.LivePulsingBadge
 import com.example.ui.components.PositionPill
 import com.example.ui.components.TeamLiveryBar
@@ -204,7 +197,6 @@ private fun LiveContentList(
     val session = state.status.session
     val weather = state.snapshot?.weather
     val raceControlMessages = state.snapshot?.raceControl?.messages ?: emptyList()
-    var isRaceControlExpanded by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -249,9 +241,17 @@ private fun LiveContentList(
                         }
                     }
 
+                    val sessionPart = state.status.topThree?.sessionPart ?: state.snapshot?.topThree?.sessionPart
+                    val detailedSessionName = LiveTimeUtils.getDetailedSessionName(
+                        sessionName = session?.name,
+                        sessionType = session?.type,
+                        sessionPart = sessionPart,
+                        raceControlMessages = raceControlMessages.mapNotNull { it.message }
+                    )
+
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = session?.name ?: "Current Session",
+                        text = detailedSessionName,
                         color = F1TextPrimary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.ExtraBold
@@ -275,34 +275,6 @@ private fun LiveContentList(
                             )
                         }
                     }
-
-                    state.status.clock?.let { clock ->
-                        if (!clock.remaining.isNullOrBlank() && clock.remaining != "00:00:00") {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(CarbonCardElevated)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AccessTime,
-                                    contentDescription = "Remaining Time",
-                                    tint = ElectricCyan,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "TIME REMAINING: ${clock.remaining}",
-                                    color = ElectricCyan,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -316,34 +288,6 @@ private fun LiveContentList(
                     humidity = weather.humidity,
                     windSpeed = weather.windSpeed
                 )
-            }
-        }
-
-        // Top 3 Podium Cards
-        val topThree = state.status.topThree?.lines
-        if (!topThree.isNullOrEmpty()) {
-            item {
-                Text(
-                    text = "SESSION LEADERS",
-                    color = F1TextSecondary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(vertical = 2.dp)
-                )
-            }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    topThree.take(3).forEach { driver ->
-                        TopThreeMiniCard(
-                            driver = driver,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
             }
         }
 
@@ -430,121 +374,8 @@ private fun LiveContentList(
             }
         }
 
-        // Race Control Messages Section
-        if (raceControlMessages.isNotEmpty()) {
-            item {
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = CarbonCard),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { isRaceControlExpanded = !isRaceControlExpanded }
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.NotificationsActive,
-                                    contentDescription = "Race Control",
-                                    tint = FlagYellow,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "RACE CONTROL MESSAGES",
-                                    color = F1TextPrimary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.5.sp
-                                )
-                            }
-                            Icon(
-                                imageVector = if (isRaceControlExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = "Toggle Race Control",
-                                tint = F1TextSecondary
-                            )
-                        }
-
-                        // Always preview latest message
-                        raceControlMessages.firstOrNull()?.let { latest ->
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "LATEST: ${latest.message ?: ""}",
-                                color = F1TextSecondary,
-                                fontSize = 12.sp,
-                                fontFamily = FontFamily.Monospace,
-                                maxLines = if (isRaceControlExpanded) Int.MAX_VALUE else 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        AnimatedVisibility(visible = isRaceControlExpanded) {
-                            Column(modifier = Modifier.padding(top = 10.dp)) {
-                                raceControlMessages.drop(1).take(10).forEach { msg ->
-                                    HorizontalDivider(color = CarbonDivider, thickness = 0.5.dp, modifier = Modifier.padding(vertical = 6.dp))
-                                    Text(
-                                        text = msg.message ?: "",
-                                        color = F1TextSecondary,
-                                        fontSize = 11.sp,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         item {
             Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-
-@Composable
-private fun TopThreeMiniCard(
-    driver: TopThreeDriver,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = CarbonCard),
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            PositionPill(position = driver.position ?: "1")
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = driver.tla ?: driver.broadcastName ?: "DRV",
-                color = F1TextPrimary,
-                fontWeight = FontWeight.Black,
-                fontSize = 14.sp
-            )
-            Text(
-                text = driver.team ?: "",
-                color = F1TextSecondary,
-                fontSize = 10.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = driver.lapTime ?: "-",
-                color = ElectricCyan,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
-            )
         }
     }
 }
@@ -580,7 +411,7 @@ private fun DriverTimingRow(driver: TimingDriverLine) {
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = driver.name ?: driver.tla ?: "Driver",
+                        text = driver.name ?: driver.getDisplayTla(),
                         color = F1TextPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
@@ -598,17 +429,16 @@ private fun DriverTimingRow(driver: TimingDriverLine) {
             }
 
             Column(horizontalAlignment = Alignment.End) {
-                val isP1 = driver.getDisplayPosition() == "1"
+                val isP1 = driver.getDisplayPosition() == "1" || driver.getDisplayPosition() == "P1"
+                val effectiveLap = driver.bestLapTime ?: driver.lapTime ?: driver.lastLapTime
+                val effectiveGap = driver.gapToLeader ?: driver.gap
+
+                // Primary time: lap time for the top driver, and the GAP for the others!
                 val primaryTime = if (isP1) {
-                    driver.lapTime ?: driver.gap ?: "-"
+                    effectiveLap ?: "-"
                 } else {
-                    driver.gap ?: driver.lapTime ?: "-"
+                    effectiveGap ?: "-"
                 }
-                val secondaryTime = if (!isP1 && driver.gap != null && driver.lapTime != null) {
-                    driver.lapTime
-                } else if (!driver.interval.isNullOrBlank() && driver.interval != driver.gap) {
-                    driver.interval
-                } else null
 
                 Text(
                     text = primaryTime,
@@ -617,19 +447,21 @@ private fun DriverTimingRow(driver: TimingDriverLine) {
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
                 )
-                if (!secondaryTime.isNullOrBlank()) {
+
+                // Current driver status from API (in pit, pit out, out, stopped, knocked out)
+                val statusText = driver.getStatusText()
+                if (!statusText.isNullOrBlank()) {
+                    val statusColor = when (statusText) {
+                        "OUT", "STOPPED", "KNOCKED OUT" -> F1Red
+                        "PIT OUT" -> ElectricCyan
+                        else -> F1TextTertiary
+                    }
                     Text(
-                        text = secondaryTime,
-                        color = F1TextSecondary,
-                        fontSize = 10.sp,
+                        text = statusText,
+                        color = statusColor,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace
-                    )
-                } else if (driver.retired == true) {
-                    Text(
-                        text = "OUT",
-                        color = F1Red,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
                     )
                 }
             }

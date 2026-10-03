@@ -9,7 +9,26 @@ data class SnapshotResponse(
     @Json(name = "track_status") val trackStatus: TrackStatusInfo? = null,
     @Json(name = "race_control") val raceControl: RaceControlData? = null,
     @Json(name = "top_three") val topThree: TopThreeData? = null,
-    @Json(name = "clock") val clock: ClockInfo? = null
+    @Json(name = "clock") val clock: ClockInfo? = null,
+    @Json(name = "timing") val timing: SnapshotTimingData? = null
+)
+
+data class SnapshotTimingData(
+    val lines: List<SnapshotTimingDriverLine> = emptyList()
+)
+
+data class SnapshotTimingDriverLine(
+    val racingNumber: String,
+    val position: String? = null,
+    val bestLapTime: String? = null,
+    val lastLapTime: String? = null,
+    val gapToLeader: String? = null,
+    val intervalToAhead: String? = null,
+    val inPit: Boolean = false,
+    val pitOut: Boolean = false,
+    val retired: Boolean = false,
+    val stopped: Boolean = false,
+    val knockedOut: Boolean = false
 )
 
 @JsonClass(generateAdapter = true)
