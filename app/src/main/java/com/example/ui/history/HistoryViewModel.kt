@@ -1,6 +1,7 @@
 package com.example.ui.history
 
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import android.app.Application
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.HistoryMeeting
 import com.example.data.model.HistorySession
@@ -24,7 +25,7 @@ sealed interface HistorySessionDetailUiState {
     data class Error(val message: String) : HistorySessionDetailUiState
 }
 
-class HistoryViewModel(private val repository: F1Repository = F1Repository()) : ViewModel() {
+class HistoryViewModel(application: Application) : AndroidViewModel(application) {\n    private val repository = F1Repository(context = application)
     private val _uiState = MutableStateFlow<HistoryUiState>(HistoryUiState.Loading)
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
     private val _sessionDetailState = MutableStateFlow<HistorySessionDetailUiState>(HistorySessionDetailUiState.Idle)
