@@ -3,6 +3,11 @@ name: Release APK
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        description: "Branch to build"
+        required: true
+        default: "main"
+        type: string
       version_name:
         description: "Version name, e.g. 1.0.0"
         required: true
@@ -26,6 +31,8 @@ jobs:
       KEYSTORE_PATH: ${{ github.workspace }}/release-key.jks
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.branch }}
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
