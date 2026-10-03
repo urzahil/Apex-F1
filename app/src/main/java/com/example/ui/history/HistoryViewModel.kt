@@ -10,70 +10,64 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.Year
 
 sealed interface HistoryUiState {
     data object Loading : HistoryUiState
-    data class Success(
-        val selectedYear: Int,
-        val availableYears: List<Int>,
-        val meetings: List<HistoryMeeting>
-    ) : HistoryUiState
+    data class Success(val selectedYear: Int, val availableYears: List<Int>, val meetings: List<HistoryMeeting>) : HistoryUiState
     data class Error(val message: String) : HistoryUiState
 }
-
 sealed interface HistorySessionDetailUiState {
     data object Idle : HistorySessionDetailUiState
     data object Loading : HistorySessionDetailUiState
-    data class Success(
-        val meetingName: String,
-        val session: HistorySession,
-        val classification: List<MergedHistoryClassification>
-    ) : HistorySessionDetailUiState
+    data class Success(val meetingName: String, val session: HistorySession, val classification: List<MergedHistoryClassification>) : HistorySessionDetailUiState
     data class Error(val message: String) : HistorySessionDetailUiState
 }
 
-class HistoryViewModel(
-    private val repository: F1Repository = F1Repository()
-) : ViewModel() {
-
+class HistoryViewModel(private val repository: F1Repository = F1Repository()) : ViewModel() {
     private val _uiState = MutableStateFlow<HistoryUiState>(HistoryUiState.Loading)
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
-
     private val _sessionDetailState = MutableStateFlow<HistorySessionDetailUiState>(HistorySessionDetailUiState.Idle)
     val sessionDetailState: StateFlow<HistorySessionDetailUiState> = _sessionDetailState.asStateFlow()
 
-    private val availableYears = listOf(2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018)
-    private var selectedYear = 2026
+    private var selectedYear = Year.now().value
+    private var loadJob: kotlinx.coroutines.Job? = null
 
-    init {
-        loadHistoryYear(selectedYear)
-    }
+    init { loadHistoryYear(selectedYear) }
 
     fun selectYear(year: Int) {
+        if (year == selectedYear && _uiState.value is HistoryUiState.Success) return
         selectedYear = year
         loadHistoryYear(year)
     }
 
-    fun refresh() {
-        loadHistoryYear(selectedYear)
-    }
+    fun refresh() = loadHistoryYear(selectedYear)
 
     private fun loadHistoryYear(year: Int) {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.value = HistoryUiState.Loading
-            val meetingsResult = repository.getHistoryMeetings(year)
-            val meetings = meetingsResult.getOrNull()
+            val yearsResult = repository.getHistoryYears()
+            val years = yearsResult.getOrNull().orEmpty()
+            val effectiveYear = when {
+                year in years -> year
+                years.isNotEmpty() -> years.first()
+                else -> year
+            }
+            if (effectiveYear != selectedYear) selectedYear = effectiveYear
 
+            val meetingsResult = repository.getHistoryMeetings(effectiveYear)
+            val meetings = meetingsResult.getOrNull()
             if (meetings != null) {
                 _uiState.value = HistoryUiState.Success(
-                    selectedYear = year,
-                    availableYears = availableYears,
+                    selectedYear = effectiveYear,
+                    availableYears = years.ifEmpty { listOf(effectiveYear) },
                     meetings = meetings
                 )
             } else {
-                val err = meetingsResult.exceptionOrNull()?.localizedMessage
-                    ?: "Failed to load archive for $year"
-                _uiState.value = HistoryUiState.Error(err)
+                _uiState.value = HistoryUiState.Error(
+                    meetingsResult.exceptionOrNull()?.localizedMessage ?: "Failed to load archive for $effectiveYear"
+                )
             }
         }
     }
@@ -83,21 +77,18 @@ class HistoryViewModel(
         viewModelScope.launch {
             _sessionDetailState.value = HistorySessionDetailUiState.Loading
             val result = repository.getHistorySessionClassification(path)
-            val classification = result.getOrNull()
-            if (classification != null) {
-                _sessionDetailState.value = HistorySessionDetailUiState.Success(
-                    meetingName = meetingName,
-                    session = session,
-                    classification = classification
-                )
-            } else {
-                val err = result.exceptionOrNull()?.localizedMessage ?: "Failed to load session timing"
-                _sessionDetailState.value = HistorySessionDetailUiState.Error(err)
-            }
+            result.fold(
+                onSuccess = { classification ->
+                    _sessionDetailState.value = HistorySessionDetailUiState.Success(meetingName, session, classification)
+                },
+                onFailure = {
+                    _sessionDetailState.value = HistorySessionDetailUiState.Error(
+                        it.localizedMessage ?: "Failed to load session timing"
+                    )
+                }
+            )
         }
     }
 
-    fun closeSessionDetail() {
-        _sessionDetailState.value = HistorySessionDetailUiState.Idle
-    }
+    fun closeSessionDetail() { _sessionDetailState.value = HistorySessionDetailUiState.Idle }
 }
