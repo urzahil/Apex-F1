@@ -21,6 +21,13 @@ suspend inline fun <T> apiCall(crossinline block: suspend () -> T): Result<T> =
     catch (e: CancellationException) { throw e }
     catch (e: Exception) { Result.failure(e) }
 
+suspend inline fun <T> Result<T>.recoverApi(crossinline block: suspend () -> T): Result<T> {
+    if (isSuccess) return this
+    return try { Result.success(block()) }
+    catch (e: CancellationException) { throw e }
+    catch (_: Exception) { this }
+}
+
 data class MergedHistoryClassification(
     val position: String, val driverNumber: String, val fullName: String, val broadcastName: String,
     val tla: String, val teamName: String, val teamColour: String, val headshotUrl: String?,
@@ -55,7 +62,7 @@ class F1Repository(
             val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
             if (!forceRefresh) cache?.read<List<CalendarRound>>("calendar", type, CALENDAR_TTL)?.let { return@apiCall it }
             api.getCalendar().also { cache?.write("calendar", it, type) }
-        }.recoverCatching {
+        }.recoverApi {
             val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
             cache?.read<List<CalendarRound>>("calendar", type, Long.MAX_VALUE) ?: throw it
         }
