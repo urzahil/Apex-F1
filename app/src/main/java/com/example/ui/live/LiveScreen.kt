@@ -425,7 +425,7 @@ private fun LiveContentList(
                 }
             }
         } else {
-            items(state.leaderboard) { driver ->
+            items(state.leaderboard, key = { it.driverNumber ?: it.racingNumber ?: it.position ?: "" }) { driver ->
                 DriverTimingRow(driver = driver)
             }
         }
