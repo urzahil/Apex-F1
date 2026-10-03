@@ -1,10 +1,8 @@
-# Moshi uses generated adapters for @JsonClass models.
--if @com.squareup.moshi.JsonClass class *
--keep class <1>JsonAdapter { <init>(...); }
+# Moshi models use generated adapters; keep model metadata and adapters for R8.
 -keep @com.squareup.moshi.JsonClass class * { *; }
+-keep class **JsonAdapter { *; }
 
-# Keep Retrofit service interfaces discoverable by reflection.
--keep,allowobfuscation,allowshrinking interface com.example.data.api.F1ApiService
+# Retrofit service methods are discovered by annotations/reflection.
+-keep,allowobfuscation interface com.example.data.api.F1ApiService
 
-# Preserve useful coroutine exception stack traces.
 -keepattributes Exceptions,InnerClasses,Signature
