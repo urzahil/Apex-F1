@@ -22,6 +22,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,10 +47,7 @@ import com.example.ui.theme.F1TextPrimary
 import com.example.ui.theme.F1TextSecondary
 
 enum class NavDestination(
-    val title: String,
-    val selectedIcon: ImageVector,
-    val unselectedIcon: ImageVector,
-    val tag: String
+    val title: String, val selectedIcon: ImageVector, val unselectedIcon: ImageVector, val tag: String
 ) {
     LIVE("Live", Icons.Filled.Speed, Icons.Outlined.Speed, "nav_live"),
     STANDINGS("Standings", Icons.Filled.EmojiEvents, Icons.Outlined.EmojiEvents, "nav_standings"),
@@ -59,20 +57,20 @@ enum class NavDestination(
 @Composable
 fun MainScreen() {
     var selectedTab by rememberSaveable { mutableStateOf(NavDestination.LIVE) }
-
     val liveViewModel: LiveViewModel = viewModel()
     val standingsViewModel: StandingsViewModel = viewModel()
     val historyViewModel: HistoryViewModel = viewModel()
+
+    LaunchedEffect(selectedTab) {
+        liveViewModel.setScreenVisible(selectedTab == NavDestination.LIVE)
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
             NavigationBar(
-                containerColor = CarbonCard,
-                tonalElevation = 8.dp,
-                modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .testTag("bottom_nav_bar")
+                containerColor = CarbonCard, tonalElevation = 8.dp,
+                modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars).testTag("bottom_nav_bar")
             ) {
                 NavDestination.entries.forEach { destination ->
                     val isSelected = selectedTab == destination
@@ -87,17 +85,13 @@ fun MainScreen() {
                         },
                         label = {
                             Text(
-                                text = destination.title,
-                                fontSize = 11.sp,
+                                text = destination.title, fontSize = 11.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = F1TextPrimary,
-                            selectedTextColor = F1Red,
-                            indicatorColor = F1Red,
-                            unselectedIconColor = F1TextSecondary,
-                            unselectedTextColor = F1TextSecondary
+                            selectedIconColor = F1TextPrimary, selectedTextColor = F1Red, indicatorColor = F1Red,
+                            unselectedIconColor = F1TextSecondary, unselectedTextColor = F1TextSecondary
                         ),
                         modifier = Modifier.testTag(destination.tag)
                     )
@@ -106,10 +100,7 @@ fun MainScreen() {
         }
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(CarbonBackground)
-                .padding(innerPadding)
+            modifier = Modifier.fillMaxSize().background(CarbonBackground).padding(innerPadding)
         ) {
             when (selectedTab) {
                 NavDestination.LIVE -> LiveScreen(viewModel = liveViewModel)
