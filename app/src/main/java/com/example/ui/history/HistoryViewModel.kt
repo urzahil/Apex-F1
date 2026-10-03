@@ -33,8 +33,9 @@ class HistoryViewModel(private val repository: F1Repository = F1Repository()) : 
     private val _sessionDetailState = MutableStateFlow<HistorySessionDetailUiState>(HistorySessionDetailUiState.Idle)
     val sessionDetailState: StateFlow<HistorySessionDetailUiState> = _sessionDetailState.asStateFlow()
 
-    private val availableYears = listOf(2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018)
-    private var selectedYear = 2026
+    private val currentYear = java.time.Year.now().value
+    private val availableYears = (currentYear downTo 2018).toList()
+    private var selectedYear = currentYear
     private var loadJob: Job? = null
     private var detailJob: Job? = null
 

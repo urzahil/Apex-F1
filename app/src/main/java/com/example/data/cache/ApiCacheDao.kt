@@ -12,6 +12,9 @@ interface ApiCacheDao {
     @Upsert
     suspend fun upsert(entity: ApiCacheEntity)
 
+    @Query("DELETE FROM api_cache WHERE updatedAtEpochMs < :cutoff")
+    suspend fun deleteOlderThan(cutoff: Long)
+
     @Query("DELETE FROM api_cache WHERE key = :key")
     suspend fun delete(key: String)
 

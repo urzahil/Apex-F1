@@ -68,6 +68,7 @@ import com.example.ui.theme.F1TextSecondary
 import com.example.ui.theme.F1TextTertiary
 import com.example.ui.theme.FlagGreen
 import com.example.ui.theme.FlagYellow
+import com.example.ui.live.LiveTimeUtils
 
 enum class QualiSessionTab {
     GRID, Q1, Q2, Q3
@@ -293,63 +294,44 @@ private fun HistoryClassificationList(
                 }
             }
         } else {
+            // Filter and sort once per state change; the LazyColumn itself may recompose many times.
             val isRace = sessionName.contains("Race", ignoreCase = true)
             val isPractice = sessionName.contains("Practice", ignoreCase = true) || sessionName.contains("FP", ignoreCase = true)
-
-            // Filter and sort items depending on selected qualifying session
-            val displayItems: List<Pair<MergedHistoryClassification, String?>> = if (isQualifying) {
-                when (selectedQualiTab) {
-                    QualiSessionTab.Q1 -> {
-                        val q1Sorted = items.filter { !it.q1Time.isNullOrBlank() }.sortedBy { it.q1Time }
-                        q1Sorted.mapIndexed { idx, it ->
-                            val timeOrGap = if (idx == 0) it.q1Time else (it.q1Diff ?: it.q1Time)
-                            it to timeOrGap
-                        }
+            val displayItems: List<Pair<MergedHistoryClassification, String?>> = remember(items, selectedQualiTab, isQualifying, sessionName) {
+                if (isQualifying) {
+                    when (selectedQualiTab) {
+                        QualiSessionTab.Q1 -> items.filter { !it.q1Time.isNullOrBlank() }
+                            .sortedBy { LiveTimeUtils.parseLapTimeToMillis(it.q1Time) ?: Long.MAX_VALUE }
+                            .mapIndexed { idx, it -> it to if (idx == 0) it.q1Time else (it.q1Diff ?: it.q1Time) }
+                        QualiSessionTab.Q2 -> items.filter { !it.q2Time.isNullOrBlank() }
+                            .sortedBy { LiveTimeUtils.parseLapTimeToMillis(it.q2Time) ?: Long.MAX_VALUE }
+                            .mapIndexed { idx, it -> it to if (idx == 0) it.q2Time else (it.q2Diff ?: it.q2Time) }
+                        QualiSessionTab.Q3 -> items.filter { !it.q3Time.isNullOrBlank() }
+                            .sortedBy { LiveTimeUtils.parseLapTimeToMillis(it.q3Time) ?: Long.MAX_VALUE }
+                            .mapIndexed { idx, it -> it to if (idx == 0) it.q3Time else (it.q3Diff ?: it.q3Time) }
+                        QualiSessionTab.GRID -> items.map { it to (it.bestLapTime ?: it.q3Time ?: it.q2Time ?: it.q1Time) }
                     }
-                    QualiSessionTab.Q2 -> {
-                        val q2Sorted = items.filter { !it.q2Time.isNullOrBlank() }.sortedBy { it.q2Time }
-                        q2Sorted.mapIndexed { idx, it ->
-                            val timeOrGap = if (idx == 0) it.q2Time else (it.q2Diff ?: it.q2Time)
-                            it to timeOrGap
-                        }
+                } else if (isRace) {
+                    items.mapIndexed { idx, it ->
+                        it to if (idx == 0 || it.position == "1") it.totalRaceTime ?: it.bestLapTime ?: "WINNER"
+                        else if (it.isRetired) "DNF" else (it.gapToLeader ?: it.intervalToAhead ?: "-")
                     }
-                    QualiSessionTab.Q3 -> {
-                        val q3Sorted = items.filter { !it.q3Time.isNullOrBlank() }.sortedBy { it.q3Time }
-                        q3Sorted.mapIndexed { idx, it ->
-                            val timeOrGap = if (idx == 0) it.q3Time else (it.q3Diff ?: it.q3Time)
-                            it to timeOrGap
-                        }
+                } else if (isPractice) {
+                    items.mapIndexed { idx, it ->
+                        it to if (idx == 0 || it.position == "1") it.bestLapTime ?: "-"
+                        else it.timeDiffToFastest ?: it.gapToLeader ?: it.intervalToAhead ?: "-"
                     }
-                    QualiSessionTab.GRID -> {
-                        items.map { it to (it.bestLapTime ?: it.q3Time ?: it.q2Time ?: it.q1Time) }
-                    }
+                } else {
+                    items.map { it to it.bestLapTime }
                 }
-            } else if (isRace) {
-                items.mapIndexed { idx, it ->
-                    val timeOrGap = if (idx == 0 || it.position == "1") {
-                        it.totalRaceTime ?: it.bestLapTime ?: "WINNER"
-                    } else {
-                        if (it.isRetired) "DNF" else (it.gapToLeader ?: it.intervalToAhead ?: "-")
-                    }
-                    it to timeOrGap
-                }
-            } else if (isPractice) {
-                items.mapIndexed { idx, it ->
-                    val timeOrGap = if (idx == 0 || it.position == "1") {
-                        it.bestLapTime ?: "-"
-                    } else {
-                        it.timeDiffToFastest ?: it.gapToLeader ?: it.intervalToAhead ?: "-"
-                    }
-                    it to timeOrGap
-                }
-            } else {
-                items.map { it to it.bestLapTime }
             }
-
-            items(displayItems) { (item, sessionTime) ->
+            val displayRankByDriver = remember(displayItems, selectedQualiTab) {
+                displayItems.mapIndexed { index, pair -> pair.first.driverNumber to (index + 1).toString() }.toMap()
+            }
+            items(displayItems, key = { "${it.first.driverNumber}:${selectedQualiTab.name}" }) { (item, sessionTime) ->
                 val displayRank = when (selectedQualiTab) {
                     QualiSessionTab.GRID -> item.position
-                    else -> (displayItems.indexOfFirst { it.first.driverNumber == item.driverNumber } + 1).toString()
+                    else -> displayRankByDriver[item.driverNumber] ?: "99"
                 }
 
                 HistoryDriverRow(

@@ -31,7 +31,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,7 +61,7 @@ fun StandingsScreen(
     viewModel: StandingsViewModel,
     modifier: Modifier = Modifier
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
         modifier = modifier
@@ -77,7 +77,7 @@ fun StandingsScreen(
         ) {
             Column {
                 Text(
-                    text = "2026 WORLD CHAMPIONSHIP",
+                    text = "${java.time.Year.now().value} WORLD CHAMPIONSHIP",
                     color = F1Red,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
@@ -211,7 +211,7 @@ private fun DriversStandingsList(drivers: List<DriverStanding>) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(drivers) { driver ->
+        items(drivers, key = { it.driverNumber ?: it.name ?: it.position?.toString() ?: "driver" }) { driver ->
             DriverStandingCard(driver = driver, maxPoints = maxPoints)
         }
         item {
@@ -362,7 +362,7 @@ private fun ConstructorsStandingsList(constructors: List<ConstructorStanding>) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(constructors) { constructor ->
+        items(constructors, key = { it.team ?: it.position?.toString() ?: "constructor" }) { constructor ->
             ConstructorStandingCard(constructor = constructor, maxPoints = maxPoints)
         }
         item {

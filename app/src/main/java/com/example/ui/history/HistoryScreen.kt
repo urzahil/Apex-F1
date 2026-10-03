@@ -37,7 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,8 +71,8 @@ fun HistoryScreen(
     viewModel: HistoryViewModel,
     modifier: Modifier = Modifier
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val sessionDetailState by viewModel.sessionDetailState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val sessionDetailState by viewModel.sessionDetailState.collectAsStateWithLifecycle()
 
     val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
     var scrolledToBottomForYear by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -104,7 +104,7 @@ fun HistoryScreen(
                         letterSpacing = 1.5.sp
                     )
                     Text(
-                        text = "F1 ARCHIVE (2018 - 2026)",
+                        text = "F1 ARCHIVE (2018 - ${java.time.Year.now().value})",
                         color = F1TextPrimary,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
@@ -234,7 +234,7 @@ fun HistoryScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(state.meetings) { meeting ->
+                        items(state.meetings, key = { it.name ?: it.location ?: "meeting" }) { meeting ->
                             MeetingCard(
                                 meeting = meeting,
                                 onSessionClick = { meetingName, session ->

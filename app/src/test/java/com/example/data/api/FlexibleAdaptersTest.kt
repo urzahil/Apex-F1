@@ -23,6 +23,14 @@ class FlexibleAdaptersTest {
     }
 
     @Test
+    fun timingPosition_numericJson_isNormalizedForDisplay() {
+        val json = """{"drivers":[{"position":1,"driver_number":"1","name":"VER"}]}"""
+        val adapter = ApiClient.moshi.adapter(com.example.data.model.TimingResponse::class.java)
+        val result = adapter.fromJson(json)
+        assertEquals("1", result?.drivers?.first()?.getDisplayPosition())
+    }
+
+    @Test
     fun topThreeLines_acceptsObject() {
         val json = """
             {"top_three":{"SessionPart":1,"Withheld":false,"Lines":{

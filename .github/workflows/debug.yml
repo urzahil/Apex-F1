@@ -7,6 +7,9 @@ on:
       - "refactor/**"
       - "fix/**"
       - "feature/**"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:

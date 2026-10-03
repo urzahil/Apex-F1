@@ -37,6 +37,7 @@ class LiveViewModel(private val repository: F1Repository = F1Repository()) : Vie
     private var cachedSessionPath: String? = null
     private var cachedSessionDrivers = emptyList<com.example.data.model.SessionDriver>()
     private var cachedHistoryPath: String? = null
+    private var consecutiveFailures = 0
 
     fun setScreenVisible(visible: Boolean) {
         if (isScreenVisible == visible) return
@@ -62,40 +63,44 @@ class LiveViewModel(private val repository: F1Repository = F1Repository()) : Vie
         pollingJob = viewModelScope.launch {
             while (isActive && isScreenVisible) {
                 if (isAutoRefreshEnabled && loadJob?.isActive != true) {
-                    loadJob = launch { loadLiveData(true) }
+                    loadJob = launch {
+                        val success = loadLiveData(true)
+                        consecutiveFailures = if (success) 0 else (consecutiveFailures + 1).coerceAtMost(4)
+                    }
                     loadJob?.join()
                 }
-                delay(
-                    when (val state = _uiState.value) {
-                        is LiveUiState.Success -> when {
-                            state.isLive && state.status.stale != true -> 3_000L
-                            state.isLive -> 10_000L
-                            else -> 60_000L
-                        }
-                        else -> 30_000L
+                val baseDelay = when (val state = _uiState.value) {
+                    is LiveUiState.Success -> when {
+                        state.isLive && state.status.stale != true -> 3_000L
+                        state.isLive -> 10_000L
+                        else -> 60_000L
                     }
-                )
+                    else -> 30_000L
+                }
+                val backoffMultiplier = 1L shl consecutiveFailures.coerceIn(0, 3)
+                delay((baseDelay * backoffMultiplier).coerceAtMost(60_000L))
             }
         }
     }
 
-    private suspend fun loadLiveData(isSilent: Boolean) = coroutineScope {
+    private suspend fun loadLiveData(isSilent: Boolean): Boolean = coroutineScope {
         if (!isSilent && _uiState.value !is LiveUiState.Success) _uiState.value = LiveUiState.Loading
-        val statusResult = repository.getStatus()
-        val status = statusResult.getOrNull()
-        if (status == null) {
-            if (_uiState.value !is LiveUiState.Success) {
-                _uiState.value = LiveUiState.Error(statusResult.exceptionOrNull()?.localizedMessage ?: "Failed to connect to F1 Live API")
-            }
-            return@coroutineScope
-        }
-
+        val statusDeferred = async { repository.getStatus() }
         val timingDeferred = async { repository.getTiming() }
         val snapshotDeferred = async { repository.getSnapshot() }
         val calendarDeferred = async {
             if (cachedCalendar == null) repository.getCalendar().also { cachedCalendar = it.getOrNull() }
             else Result.success(cachedCalendar!!)
         }
+        val statusResult = statusDeferred.await()
+        val status = statusResult.getOrNull()
+        if (status == null) {
+            if (_uiState.value !is LiveUiState.Success) {
+                _uiState.value = LiveUiState.Error(statusResult.exceptionOrNull()?.localizedMessage ?: "Failed to connect to F1 Live API")
+            }
+            return@coroutineScope false
+        }
+
         val sessionPath = status.session?.path
         val driversDeferred = async {
             if (!sessionPath.isNullOrBlank() && sessionPath != cachedSessionPath) {
@@ -165,6 +170,7 @@ class LiveViewModel(private val repository: F1Repository = F1Repository()) : Vie
             isLive = isLiveSession,
             autoRefresh = isAutoRefreshEnabled
         )
+        true
     }
 
     private suspend fun buildLeaderboard(

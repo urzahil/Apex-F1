@@ -11,8 +11,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import java.time.Duration
 import java.time.Instant
+
+suspend inline fun <T> apiCall(crossinline block: suspend () -> T): Result<T> =
+    try { Result.success(block()) }
+    catch (e: CancellationException) { throw e }
+    catch (e: Exception) { Result.failure(e) }
+
+suspend inline fun <T> Result<T>.recoverApi(crossinline block: suspend () -> T): Result<T> {
+    if (isSuccess) return this
+    return try { Result.success(block()) }
+    catch (e: CancellationException) { throw e }
+    catch (_: Exception) { this }
+}
 
 data class MergedHistoryClassification(
     val position: String, val driverNumber: String, val fullName: String, val broadcastName: String,
@@ -38,75 +52,87 @@ class F1Repository(
         }.getOrNull()
     }
 
-    suspend fun getStatus(): Result<StatusResponse> = withContext(Dispatchers.IO) { runCatching { api.getStatus() } }
-    suspend fun getSessionDrivers(): Result<List<SessionDriver>> = withContext(Dispatchers.IO) { runCatching { api.getSessionDrivers() } }
-    suspend fun getSnapshot(): Result<SnapshotResponse> = withContext(Dispatchers.IO) { runCatching { api.getSnapshot() } }
-    suspend fun getTiming(): Result<TimingResponse> = withContext(Dispatchers.IO) { runCatching { api.getTiming() } }
+    suspend fun getStatus(): Result<StatusResponse> = withContext(Dispatchers.IO) { apiCall { api.getStatus() } }
+    suspend fun getSessionDrivers(): Result<List<SessionDriver>> = withContext(Dispatchers.IO) { apiCall { api.getSessionDrivers() } }
+    suspend fun getSnapshot(): Result<SnapshotResponse> = withContext(Dispatchers.IO) { apiCall { api.getSnapshot() } }
+    suspend fun getTiming(): Result<TimingResponse> = withContext(Dispatchers.IO) { apiCall { api.getTiming() } }
 
     suspend fun getCalendar(forceRefresh: Boolean = false): Result<List<CalendarRound>> = withContext(Dispatchers.IO) {
-        runCatching {
+        apiCall {
             val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
-            if (!forceRefresh) cache?.read<List<CalendarRound>>("calendar", type, CALENDAR_TTL)?.let { return@runCatching it }
+            if (!forceRefresh) cache?.read<List<CalendarRound>>("calendar", type, CALENDAR_TTL)?.let { return@apiCall it }
             api.getCalendar().also { cache?.write("calendar", it, type) }
-        }.recoverCatching {
+        }.recoverApi {
             val type = Types.newParameterizedType(List::class.java, CalendarRound::class.java)
             cache?.read<List<CalendarRound>>("calendar", type, Long.MAX_VALUE) ?: throw it
         }
     }
 
     suspend fun getDriverStandings(): Result<List<DriverStanding>> = withContext(Dispatchers.IO) {
-        runCatching {
+        apiCall {
             val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
-            cache?.read<List<DriverStanding>>("standings_drivers", type, STANDINGS_TTL)?.let { return@runCatching it }
+            cache?.read<List<DriverStanding>>("standings_drivers", type, STANDINGS_TTL)?.let { return@apiCall it }
             api.getDriverStandings().standings.orEmpty().also { cache?.write("standings_drivers", it, type) }
+        }.recoverApi {
+            val type = Types.newParameterizedType(List::class.java, DriverStanding::class.java)
+            cache?.read<List<DriverStanding>>("standings_drivers", type, Long.MAX_VALUE) ?: throw it
         }
     }
 
     suspend fun getConstructorStandings(): Result<List<ConstructorStanding>> = withContext(Dispatchers.IO) {
-        runCatching {
+        apiCall {
             val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
-            cache?.read<List<ConstructorStanding>>("standings_constructors", type, STANDINGS_TTL)?.let { return@runCatching it }
+            cache?.read<List<ConstructorStanding>>("standings_constructors", type, STANDINGS_TTL)?.let { return@apiCall it }
             api.getConstructorStandings().standings.orEmpty().also { cache?.write("standings_constructors", it, type) }
+        }.recoverApi {
+            val type = Types.newParameterizedType(List::class.java, ConstructorStanding::class.java)
+            cache?.read<List<ConstructorStanding>>("standings_constructors", type, Long.MAX_VALUE) ?: throw it
         }
     }
 
     suspend fun getResults(): Result<List<ResultFileItem>> = withContext(Dispatchers.IO) {
-        runCatching {
+        apiCall {
             val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
-            cache?.read<List<ResultFileItem>>("results", type, RESULTS_TTL)?.let { return@runCatching it }
+            cache?.read<List<ResultFileItem>>("results", type, RESULTS_TTL)?.let { return@apiCall it }
             api.getResults().also { cache?.write("results", it, type) }
+        }.recoverApi {
+            val type = Types.newParameterizedType(List::class.java, ResultFileItem::class.java)
+            cache?.read<List<ResultFileItem>>("results", type, Long.MAX_VALUE) ?: throw it
         }
     }
 
     suspend fun getResultDetail(filename: String): Result<DetailedResultResponse> =
-        withContext(Dispatchers.IO) { runCatching { api.getResultDetail(filename) } }
+        withContext(Dispatchers.IO) { apiCall { api.getResultDetail(filename) } }
 
     suspend fun getHistoryMeetings(year: Int): Result<List<HistoryMeeting>> = withContext(Dispatchers.IO) {
-        runCatching {
+        apiCall {
             val type = Types.newParameterizedType(List::class.java, HistoryMeeting::class.java)
             val key = "history_year_" + year
-            cache?.read<List<HistoryMeeting>>(key, type, HISTORY_TTL)?.let { return@runCatching it }
+            cache?.read<List<HistoryMeeting>>(key, type, HISTORY_TTL)?.let { return@apiCall it }
             api.getHistoryYear(year).meetings.orEmpty().also { cache?.write(key, it, type) }
+        }.recoverApi {
+            val type = Types.newParameterizedType(List::class.java, HistoryMeeting::class.java)
+            cache?.read<List<HistoryMeeting>>("history_year_" + year, type, Long.MAX_VALUE) ?: throw it
         }
     }
 
     suspend fun getHistorySessionClassification(path: String, sessionType: String? = null): Result<List<MergedHistoryClassification>> =
         withContext(Dispatchers.IO) {
-            runCatching {
-                val key = "history_session_" + path.hashCode()
+            apiCall {
+                val key = "history_session_" + path
                 val type = Types.newParameterizedType(List::class.java, MergedHistoryClassification::class.java)
-                cache?.read<List<MergedHistoryClassification>>(key, type, HISTORY_TTL)?.let { return@runCatching it }
+                cache?.read<List<MergedHistoryClassification>>(key, type, HISTORY_TTL)?.let { return@apiCall it }
 
                 coroutineScope {
-                    val timing = async { runCatching { api.getHistoryTimingData(path) }.getOrNull() }
-                    val drivers = async { runCatching { api.getHistoryDriverList(path) }.getOrNull() }
+                    val timing = async { apiCall { api.getHistoryTimingData(path) } }
+                    val drivers = async { apiCall { api.getHistoryDriverList(path) } }
                     val sessionData = async {
                         if (sessionType?.contains("Race", ignoreCase = true) == true) {
-                            runCatching { api.getHistorySessionData(path) }.getOrNull()
+                            apiCall { api.getHistorySessionData(path) }.getOrNull()
                         } else null
                     }
-                    val timingData = timing.await()
-                    val driverMap = drivers.await().orEmpty()
+                    val timingData = timing.await().getOrNull()
+                    val driverMap = drivers.await().getOrNull().orEmpty()
                     val sd = sessionData.await()
 
                     val totalRaceTime = sd?.let {
@@ -117,9 +143,10 @@ class F1Repository(
                         if (start != null && finish != null) calculateDuration(start, finish) else null
                     }
 
-                    val items = timingData?.lines.orEmpty().map { (driverNumber, line) ->
+                    val lines = timingData?.lines ?: throw IOException("History timing data was unavailable")
+                    val items = lines.map { (driverNumber, line) ->
                         val info = driverMap[driverNumber]
-                        val pos = line.position?.toString() ?: "-"
+                        val pos = normalizePosition(line.position)
                         MergedHistoryClassification(
                             position = pos, driverNumber = driverNumber,
                             fullName = info?.fullName ?: info?.broadcastName ?: "Driver #$driverNumber",
@@ -140,11 +167,22 @@ class F1Repository(
                             inPit = line.inPit == true, stopped = line.stopped == true
                         )
                     }.sortedBy { it.position.toIntOrNull() ?: 999 }
+                    if (items.isEmpty()) throw IOException("History classification was empty")
                     cache?.write(key, items, type)
                     items
                 }
+            }.recoverApi {
+                val type = Types.newParameterizedType(List::class.java, MergedHistoryClassification::class.java)
+                cache?.read<List<MergedHistoryClassification>>("history_session_" + path, type, Long.MAX_VALUE) ?: throw it
             }
         }
+
+    private fun normalizePosition(position: Any?): String = when (position) {
+        null -> "-"
+        is Number -> position.toDouble().let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
+        is String -> position.toDoubleOrNull()?.let { if (it % 1.0 == 0.0) it.toInt().toString() else position } ?: position
+        else -> position.toString()
+    }
 
     private fun calculateDuration(startUtc: String, endUtc: String): String? = runCatching {
         val diff = Duration.between(Instant.parse(startUtc), Instant.parse(endUtc))

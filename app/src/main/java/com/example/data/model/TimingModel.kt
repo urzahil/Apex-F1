@@ -38,7 +38,12 @@ data class TimingDriverLine(
     @Json(name = "knock_out") val knockOut: Boolean? = null
 ) {
     fun getDisplayPosition(): String {
-        return position?.toString() ?: "-"
+        return when (val value = position) {
+            null -> "-"
+            is Number -> value.toDouble().let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
+            is String -> value.toDoubleOrNull()?.let { if (it % 1.0 == 0.0) it.toInt().toString() else value } ?: value
+            else -> value.toString()
+        }
     }
     fun getDisplayNumber(): String {
         return driverNumber ?: racingNumber ?: "-"
