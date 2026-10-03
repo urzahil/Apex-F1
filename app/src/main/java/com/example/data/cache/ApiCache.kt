@@ -8,7 +8,12 @@ import kotlinx.coroutines.withContext
 import java.lang.reflect.Type
 
 class ApiCache(private val dao: ApiCacheDao) {
-    companion object { private const val MAX_CACHE_AGE_MS = 7 * 24 * 60 * 60 * 1000L }
+    companion object {
+        private const val CALENDAR_TTL_MS = 6 * 60 * 60 * 1000L
+        private const val RESULTS_TTL_MS = 24 * 60 * 60 * 1000L
+        private const val STANDINGS_TTL_MS = 5 * 60 * 1000L
+        private const val HISTORY_TTL_MS = 7 * 24 * 60 * 60 * 1000L
+    }
     private val purgeMutex = Mutex()
     private var didPurge = false
     private val moshi = ApiClient.moshi
@@ -16,7 +21,15 @@ class ApiCache(private val dao: ApiCacheDao) {
     suspend fun purgeExpired() {
         purgeMutex.withLock {
             if (didPurge) return
-            withContext(Dispatchers.IO) { dao.deleteOlderThan(System.currentTimeMillis() - MAX_CACHE_AGE_MS) }
+            withContext(Dispatchers.IO) {
+                val now = System.currentTimeMillis()
+                dao.deleteExpired(
+                    calendarCutoff = now - CALENDAR_TTL_MS,
+                    resultsCutoff = now - RESULTS_TTL_MS,
+                    standingsCutoff = now - STANDINGS_TTL_MS,
+                    historyCutoff = now - HISTORY_TTL_MS
+                )
+            }
             didPurge = true
         }
     }
