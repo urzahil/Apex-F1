@@ -9,7 +9,8 @@ import com.example.data.model.MergedHistoryClassification
 internal object HistoryClassificationMapper {
     fun map(lines: Map<String, HistoryTimingLine>, driverMap: Map<String, HistoryDriverInfo>, totalRaceTime: String?): List<MergedHistoryClassification> =
         lines.map { (lineKey, line) ->
-            val driverNumber = line.racingNumber?.takeIf { it.isNotBlank() } ?: lineKey
+            val rawDriverNumber = line.racingNumber?.takeIf { it.isNotBlank() } ?: lineKey
+            val driverNumber = normalizeNumber(rawDriverNumber)
             val driverInfo = findDriver(driverNumber, driverMap)
             val position = displayPosition(line.position)
             MergedHistoryClassification(
@@ -44,7 +45,7 @@ internal object HistoryClassificationMapper {
 
     private fun findDriver(racingNumber: String, driverMap: Map<String, HistoryDriverInfo>): HistoryDriverInfo? {
         val normalized = normalizeNumber(racingNumber)
-        return driverMap[racingNumber] ?: driverMap.entries.firstOrNull {
+        return driverMap.entries.firstOrNull {
             normalizeNumber(it.key) == normalized || normalizeNumber(it.value.racingNumber) == normalized
         }?.value
     }
