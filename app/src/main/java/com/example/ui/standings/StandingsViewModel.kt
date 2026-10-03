@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.Year
 
 enum class StandingsCategory { DRIVERS, CONSTRUCTORS }
 
@@ -52,7 +53,7 @@ class StandingsViewModel(private val repository: F1Repository = F1Repository()) 
 
                 if (drivers != null || constructors != null || previous != null) {
                     _uiState.value = StandingsUiState.Success(
-                        season = 2026, category = currentCategory,
+                        season = Year.now().value, category = currentCategory,
                         drivers = drivers ?: previous?.drivers.orEmpty(),
                         constructors = constructors ?: previous?.constructors.orEmpty()
                     )
