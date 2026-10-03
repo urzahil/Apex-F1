@@ -1,6 +1,7 @@
 package com.example.ui.standings
 
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import android.app.Application
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.ConstructorStanding
 import com.example.data.model.DriverStanding
@@ -21,7 +22,7 @@ sealed interface StandingsUiState {
     data class Error(val message: String) : StandingsUiState
 }
 
-class StandingsViewModel(private val repository: F1Repository = F1Repository()) : ViewModel() {
+class StandingsViewModel(application: Application) : AndroidViewModel(application) {\n    private val repository = F1Repository(context = application)
     private val _uiState = MutableStateFlow<StandingsUiState>(StandingsUiState.Loading)
     val uiState: StateFlow<StandingsUiState> = _uiState.asStateFlow()
     private var currentCategory = StandingsCategory.DRIVERS
