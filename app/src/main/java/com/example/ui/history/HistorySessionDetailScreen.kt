@@ -54,7 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.data.repository.MergedHistoryClassification
+import com.example.data.model.MergedHistoryClassification
 import com.example.ui.components.PositionPill
 import com.example.ui.components.TeamLiveryBar
 import com.example.ui.theme.CarbonBackground
