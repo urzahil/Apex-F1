@@ -4,10 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.History
@@ -22,6 +19,8 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -60,19 +59,13 @@ enum class NavDestination(
 fun MainScreen() {
     var selectedTab by rememberSaveable { mutableStateOf(NavDestination.LIVE) }
 
-    val liveViewModel: LiveViewModel = viewModel()
-    val standingsViewModel: StandingsViewModel = viewModel()
-    val historyViewModel: HistoryViewModel = viewModel()
-
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
             NavigationBar(
                 containerColor = CarbonCard,
                 tonalElevation = 8.dp,
-                modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .testTag("bottom_nav_bar")
+                modifier = Modifier.testTag("bottom_nav_bar")
             ) {
                 NavDestination.entries.forEach { destination ->
                     val isSelected = selectedTab == destination
@@ -106,15 +99,25 @@ fun MainScreen() {
         }
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(CarbonBackground)
-                .padding(innerPadding)
+            modifier = Modifier.fillMaxSize().background(CarbonBackground).padding(innerPadding)
         ) {
             when (selectedTab) {
-                NavDestination.LIVE -> LiveScreen(viewModel = liveViewModel)
-                NavDestination.STANDINGS -> StandingsScreen(viewModel = standingsViewModel)
-                NavDestination.HISTORY -> HistoryScreen(viewModel = historyViewModel)
+                NavDestination.LIVE -> {
+                    val viewModel: LiveViewModel = viewModel()
+                    LaunchedEffect(viewModel) { viewModel.setScreenActive(true) }
+                    DisposableEffect(viewModel) {
+                        onDispose { viewModel.setScreenActive(false) }
+                    }
+                    LiveScreen(viewModel = viewModel)
+                }
+                NavDestination.STANDINGS -> {
+                    val viewModel: StandingsViewModel = viewModel()
+                    StandingsScreen(viewModel = viewModel)
+                }
+                NavDestination.HISTORY -> {
+                    val viewModel: HistoryViewModel = viewModel()
+                    HistoryScreen(viewModel = viewModel)
+                }
             }
         }
     }
