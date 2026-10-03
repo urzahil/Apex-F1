@@ -27,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -35,7 +34,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -109,22 +107,6 @@ fun HistoryScreen(
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
-                    )
-                }
-                IconButton(
-                    onClick = { viewModel.refresh() },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(CarbonCard)
-                        .border(1.dp, CarbonDivider, CircleShape)
-                        .testTag("refresh_races_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh Races",
-                        tint = F1TextPrimary,
-                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
