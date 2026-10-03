@@ -5,6 +5,7 @@ import com.example.data.model.HistoryDriverInfo
 import com.example.data.model.HistoryQualiStat
 import com.example.data.model.HistoryTimingLine
 import com.example.data.repository.HistoryClassificationMapper
+import com.example.data.model.MergedHistoryClassification
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
