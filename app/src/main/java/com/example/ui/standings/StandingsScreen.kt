@@ -1,0 +1,470 @@
+package com.example.ui.standings
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.data.model.ConstructorStanding
+import com.example.data.model.DriverStanding
+import com.example.ui.components.PositionPill
+import com.example.ui.components.TeamLiveryBar
+import com.example.ui.theme.CarbonBackground
+import com.example.ui.theme.CarbonCard
+import com.example.ui.theme.CarbonDivider
+import com.example.ui.theme.F1Red
+import com.example.ui.theme.F1TextPrimary
+import com.example.ui.theme.F1TextSecondary
+import com.example.ui.theme.F1TextTertiary
+import com.example.ui.theme.FlagYellow
+import com.example.ui.theme.parseHexColor
+
+@Composable
+fun StandingsScreen(
+    viewModel: StandingsViewModel,
+    modifier: Modifier = Modifier
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(CarbonBackground)
+    ) {
+        // Standings Header without top refresh button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "2026 WORLD CHAMPIONSHIP",
+                    color = F1Red,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.5.sp
+                )
+                Text(
+                    text = "CURRENT STANDINGS",
+                    color = F1TextPrimary,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
+        }
+
+        when (val state = uiState) {
+            is StandingsUiState.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = F1Red)
+                }
+            }
+            is StandingsUiState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Error Loading Standings",
+                            color = F1TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = state.message,
+                            color = F1TextSecondary,
+                            fontSize = 13.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.refresh() },
+                            colors = ButtonDefaults.buttonColors(containerColor = F1Red)
+                        ) {
+                            Text("Retry")
+                        }
+                    }
+                }
+            }
+            is StandingsUiState.Success -> {
+                // Category Tabs (Drivers vs Constructors)
+                CategoryTabs(
+                    selectedCategory = state.category,
+                    onSelectCategory = { viewModel.selectCategory(it) }
+                )
+
+                // Standings List
+                if (state.category == StandingsCategory.DRIVERS) {
+                    DriversStandingsList(drivers = state.drivers)
+                } else {
+                    ConstructorsStandingsList(constructors = state.constructors)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryTabs(
+    selectedCategory: StandingsCategory,
+    onSelectCategory: (StandingsCategory) -> Unit
+) {
+    val selectedIndex = if (selectedCategory == StandingsCategory.DRIVERS) 0 else 1
+    TabRow(
+        selectedTabIndex = selectedIndex,
+        containerColor = CarbonBackground,
+        contentColor = F1Red,
+        divider = { HorizontalDivider(color = CarbonDivider, thickness = 1.dp) },
+        indicator = { tabPositions ->
+            TabRowDefaults.SecondaryIndicator(
+                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
+                color = F1Red,
+                height = 3.dp
+            )
+        },
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+    ) {
+        Tab(
+            selected = selectedCategory == StandingsCategory.DRIVERS,
+            onClick = { onSelectCategory(StandingsCategory.DRIVERS) },
+            text = {
+                Text(
+                    text = "DRIVERS",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = if (selectedCategory == StandingsCategory.DRIVERS) F1TextPrimary else F1TextSecondary
+                )
+            },
+            modifier = Modifier.testTag("tab_drivers")
+        )
+        Tab(
+            selected = selectedCategory == StandingsCategory.CONSTRUCTORS,
+            onClick = { onSelectCategory(StandingsCategory.CONSTRUCTORS) },
+            text = {
+                Text(
+                    text = "CONSTRUCTORS",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = if (selectedCategory == StandingsCategory.CONSTRUCTORS) F1TextPrimary else F1TextSecondary
+                )
+            },
+            modifier = Modifier.testTag("tab_constructors")
+        )
+    }
+}
+
+@Composable
+private fun DriversStandingsList(drivers: List<DriverStanding>) {
+    val maxPoints = (drivers.firstOrNull()?.points ?: 1.0).coerceAtLeast(1.0)
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(drivers) { driver ->
+            DriverStandingCard(driver = driver, maxPoints = maxPoints)
+        }
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun DriverStandingCard(driver: DriverStanding, maxPoints: Double) {
+    val progress = ((driver.points ?: 0.0) / maxPoints).coerceIn(0.0, 1.0).toFloat()
+    val teamColor = com.example.ui.theme.getTeamColor(driver.team, driver.teamColour)
+
+    Card(
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = CarbonCard),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("driver_standing_${driver.position}")
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PositionPill(position = driver.position?.toString() ?: "-")
+                Spacer(modifier = Modifier.width(8.dp))
+                TeamLiveryBar(teamColour = driver.teamColour, teamName = driver.team)
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!driver.driverNumber.isNullOrBlank()) {
+                            Text(
+                                text = "#${driver.driverNumber}",
+                                color = F1Red,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = driver.name ?: "Unknown Driver",
+                            color = F1TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (!driver.acronym.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "(${driver.acronym})",
+                                color = F1TextSecondary,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Text(
+                            text = driver.team ?: "",
+                            color = F1TextSecondary,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (!driver.nationality.isNullOrBlank()) {
+                            Text(
+                                text = " • ${driver.nationality}",
+                                color = F1TextTertiary,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+
+                // Points & Wins
+                Column(horizontalAlignment = Alignment.End) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = driver.displayPoints(),
+                            color = F1TextPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = "PTS",
+                            color = F1TextSecondary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                        if ((driver.wins ?: 0) > 0) {
+                            Icon(
+                                imageVector = Icons.Default.EmojiEvents,
+                                contentDescription = "Wins",
+                                tint = FlagYellow,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                text = "${driver.wins}W",
+                                color = FlagYellow,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        if ((driver.podiums ?: 0) > 0) {
+                            Text(
+                                text = "${driver.podiums} Podiums",
+                                color = F1TextSecondary,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(CarbonDivider)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress.coerceIn(0.01f, 1f))
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(teamColor)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConstructorsStandingsList(constructors: List<ConstructorStanding>) {
+    val maxPoints = (constructors.firstOrNull()?.points ?: 1.0).coerceAtLeast(1.0)
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(constructors) { constructor ->
+            ConstructorStandingCard(constructor = constructor, maxPoints = maxPoints)
+        }
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun ConstructorStandingCard(constructor: ConstructorStanding, maxPoints: Double) {
+    val progress = ((constructor.points ?: 0.0) / maxPoints).coerceIn(0.0, 1.0).toFloat()
+    val teamColor = com.example.ui.theme.getTeamColor(constructor.team, constructor.teamColour)
+
+    Card(
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = CarbonCard),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("constructor_standing_${constructor.position}")
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PositionPill(position = constructor.position?.toString() ?: "-")
+                Spacer(modifier = Modifier.width(8.dp))
+                TeamLiveryBar(teamColour = constructor.teamColour, teamName = constructor.team)
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = constructor.team ?: "Unknown Team",
+                        color = F1TextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if ((constructor.wins ?: 0) > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.EmojiEvents,
+                                contentDescription = "Victories",
+                                tint = FlagYellow,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "${constructor.wins} Grand Prix Wins",
+                                color = FlagYellow,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                // Points
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = constructor.displayPoints(),
+                        color = F1TextPrimary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "PTS",
+                        color = F1TextSecondary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(CarbonDivider)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress.coerceIn(0.01f, 1f))
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(teamColor)
+                )
+            }
+        }
+    }
+}
