@@ -1,6 +1,8 @@
 name: Temporary Release Build Diagnostic
 
 on:
+  push:
+    branches: [debug/release-build-failure]
   pull_request:
     branches: [main]
   workflow_dispatch:
