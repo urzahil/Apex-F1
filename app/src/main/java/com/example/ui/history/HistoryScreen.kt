@@ -72,7 +72,7 @@ fun HistoryScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val sessionDetailState by viewModel.sessionDetailState.collectAsState()
+    val sessionDetailState by viewModel.sessionDetailState.collectAsStateWithLifecycle()
 
     val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
     var scrolledToBottomForYear by rememberSaveable { mutableStateOf<Int?>(null) }
