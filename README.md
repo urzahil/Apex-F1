@@ -7,20 +7,15 @@ Apex-F1 is an Android app for following Formula 1 sessions, live timing, champio
 ### Live timing
 - Follow the current Formula 1 session with continuously refreshed timing data.
 - View the running order, driver gaps, lap information, and session status.
-- Display the current top three.
-- Handles variations in the timing API data format so live sessions can continue to be displayed when fields change shape.
-- Polling is optimized around whether the live screen is currently visible and whether the session is active.
 
 ### Championship standings
 - View the current Drivers' Championship standings.
 - View the Constructors' Championship standings.
-- Driver and constructor data are loaded independently so a problem with one dataset does not unnecessarily prevent the other from being displayed.
 
 ### Race and session history
-- Browse previous Formula 1 seasons and events.
+- Browse previous Formula 1 events.
 - Open individual sessions to inspect historical timing and classification data.
-- Supports race, qualifying, sprint, and practice session data where available from the API.
-- Historical data can be cached locally to reduce repeated network requests.
+- Supports race, qualifying, sprint, and practice session data.
 
 ## Architecture
 
