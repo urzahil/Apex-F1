@@ -22,7 +22,6 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -33,6 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.history.HistoryScreen
 import com.example.ui.history.HistoryViewModel
@@ -61,8 +61,9 @@ fun MainScreen() {
     val standingsViewModel: StandingsViewModel = viewModel()
     val historyViewModel: HistoryViewModel = viewModel()
 
-    LaunchedEffect(selectedTab) {
+    LifecycleResumeEffect(selectedTab) {
         liveViewModel.setScreenVisible(selectedTab == NavDestination.LIVE)
+        onPauseOrDispose { liveViewModel.setScreenVisible(false) }
     }
 
     Scaffold(
