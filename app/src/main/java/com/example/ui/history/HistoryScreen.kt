@@ -210,7 +210,9 @@ fun HistoryScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        itemsIndexed(state.meetings, key = { index, meeting ->\n                            meeting.key ?: meeting.path ?: "${meeting.name}|${meeting.location}|${meeting.country}|$index"\n                        }) { _, meeting ->
+                        itemsIndexed(state.meetings, key = { index, meeting ->
+                            meeting.key ?: meeting.path ?: "${meeting.name}|${meeting.location}|${meeting.country}|$index"
+                        }) { _, meeting ->
                             MeetingCard(
                                 meeting = meeting,
                                 onSessionClick = { meetingName, session ->
