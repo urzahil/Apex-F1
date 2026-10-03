@@ -1,6 +1,7 @@
 package com.example.ui.live
 
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import android.app.Application
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.CalendarRound
 import com.example.data.model.SnapshotResponse
@@ -26,7 +27,7 @@ sealed interface LiveUiState {
     data class Error(val message: String) : LiveUiState
 }
 
-class LiveViewModel(private val repository: F1Repository = F1Repository()) : ViewModel() {
+class LiveViewModel(application: Application) : AndroidViewModel(application) {\n    private val repository = F1Repository(context = application)
     private val _uiState = MutableStateFlow<LiveUiState>(LiveUiState.Loading)
     val uiState: StateFlow<LiveUiState> = _uiState.asStateFlow()
 
