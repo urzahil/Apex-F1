@@ -62,10 +62,12 @@ class F1Repository(
     private val cache: ApiCache? = defaultCache()
 ) {
     private companion object {
-        const val CALENDAR_TTL = 6 * 60 * 60 * 1000L
+        // const val CALENDAR_TTL = 6 * 60 * 60 * 1000L
+        const val CALENDAR_TTL = 60 * 60 * 1000L
         const val HISTORY_TTL = 24 * 60 * 60 * 1000L
         const val STANDINGS_TTL = 5 * 60 * 1000L
-        const val RESULTS_TTL = 24 * 60 * 60 * 1000L
+        // const val RESULTS_TTL = 24 * 60 * 60 * 1000L
+        const val RESULTS_TTL = 60 * 60 * 1000L
         fun defaultCache(): ApiCache? = runCatching {
             ApiCache(ApexDatabase.getInstance(ApexApplication.instance).apiCacheDao())
         }.getOrNull()
