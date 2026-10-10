@@ -436,7 +436,7 @@ private fun ConstructorStandingCard(constructor: ConstructorStanding, maxPoints:
                     Text(
                         text = constructor.team ?: "Unknown Team",
                         color = F1TextPrimary,
-                        fontSize = 15.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

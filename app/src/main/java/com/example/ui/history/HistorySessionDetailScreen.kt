@@ -444,7 +444,7 @@ private fun HistoryDriverRow(
                         Text(
                             text = item.fullName,
                             color = F1TextPrimary,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
