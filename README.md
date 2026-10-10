@@ -1,9 +1,10 @@
 # Apex-F1
-Apex-F1 is an Android app for following Formula 1 sessions, including live timing, standings, race history, and session insights in a single mobile experience.
+
+An Android app for following Formula 1: live session timing, championship standings and race results in one place.
 
 ## Features
-- Live race session monitoring and timing data
-- Driver and constructor standings
-- Race calendar and event browsing
-- Historical race and session viewing
-- Detailed results and classification insights
+- Live: session status and a timing board with positions and gaps.
+- Race Control messages.
+- Tyre stint history per driver.
+- Drivers' and constructors' standings.
+- Browse all races of the season.
