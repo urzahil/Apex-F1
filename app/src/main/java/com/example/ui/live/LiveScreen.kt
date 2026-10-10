@@ -646,7 +646,7 @@ private fun LiveContentList(
                                         Text(
                                             text = driver.name ?: driver.getDisplayTla(),
                                             color = F1TextPrimary,
-                                            fontSize = 14.sp,
+                                            fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
